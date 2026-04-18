@@ -1,14 +1,14 @@
-from flask import Flask, send_file, send_from_directory
+from flask import Flask, render_template, send_from_directory
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-app = Flask(__name__, static_folder="static")
+app = Flask(__name__, static_folder="static", template_folder="templates")
 
-# ROTA PRINCIPAL (/) — ESSENCIAL
+# ROTA PRINCIPAL
 @app.route("/")
 def index():
-    return send_file(os.path.join(BASE_DIR, "index.html"))
+    return render_template("index.html")
 
 # MANIFEST PWA
 @app.route("/static/manifest.json")
