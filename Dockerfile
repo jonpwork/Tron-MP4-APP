@@ -22,4 +22,4 @@ COPY . .
 
 # Comando para rodar com Gunicorn, usando a porta dinâmica
 # Se a variável $PORT não for fornecida, ele usa 10000 como padrão
-CMD ["sh", "-c", "gunicorn app:app --bind 0.0.0.0:${PORT:-10000}"]
+CMD ["sh", "-c", "gunicorn app:app --bind 0.0.0.0:${PORT:-10000} --workers 1 --worker-class gthread --threads 4 --timeout 0 --log-level info"]
