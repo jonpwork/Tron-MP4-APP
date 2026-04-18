@@ -1,23 +1,12 @@
-from flask import (
-    Flask, request, send_file, after_this_request,
-    session, redirect, url_for, jsonify
-)
-import subprocess, os, tempfile, traceback, sqlite3
-import secrets, uuid, multiprocessing, json, textwrap
+from flask import Flask, request, send_file, after_this_request, jsonify
+import subprocess, os, tempfile, traceback, multiprocessing, json, textwrap
 import requests as http_requests
-from datetime import timedelta
-from functools import wraps
-from werkzeug.security import generate_password_hash, check_password_hash
 
 # ─────────────────────────────────────────────
 #  CONFIG
 # ─────────────────────────────────────────────
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 300 * 1024 * 1024
-app.secret_key = os.environ.get("SECRET_KEY", "tron-emc3-chave-fixa-2025")
-app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["SESSION_COOKIE_SECURE"] = False
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 CPU_CORES    = str(multiprocessing.cpu_count())
@@ -31,107 +20,19 @@ RESOLUTIONS = {
 }
 
 # ─────────────────────────────────────────────
-#  BANCO DE DADOS
-# ─────────────────────────────────────────────
-def get_db():
-    conn = sqlite3.connect(os.path.join(BASE_DIR, "usuarios.db"))
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def init_db():
-    with get_db() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS usuarios (
-                email        TEXT PRIMARY KEY,
-                senha        TEXT NOT NULL,
-                sessao_atual TEXT,
-                ativo        INTEGER DEFAULT 1
-            )
-        """)
-        try:
-            conn.execute("ALTER TABLE usuarios ADD COLUMN sessao_atual TEXT")
-        except Exception:
-            pass
-
-init_db()
-
-# ─────────────────────────────────────────────
-#  SEGURANÇA
-# ─────────────────────────────────────────────
-def login_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if "user" not in session or "token" not in session:
-            return redirect(url_for("login"))
-        with get_db() as conn:
-            user = conn.execute(
-                "SELECT sessao_atual FROM usuarios WHERE email = ?",
-                (session["user"],)
-            ).fetchone()
-        if not user or user["sessao_atual"] != session["token"]:
-            session.clear()
-            return redirect(url_for("login"))
-        return f(*args, **kwargs)
-    return decorated
-
-# ─────────────────────────────────────────────
-#  AUTH
-# ─────────────────────────────────────────────
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
-        senha = request.form.get("senha", "")
-        with get_db() as conn:
-            user = conn.execute(
-                "SELECT * FROM usuarios WHERE email = ?", (email,)
-            ).fetchone()
-        if user and check_password_hash(user["senha"], senha):
-            token = str(uuid.uuid4())
-            session.permanent = True
-            session["user"]  = email
-            session["token"] = token
-            with get_db() as conn:
-                conn.execute(
-                    "UPDATE usuarios SET sessao_atual = ? WHERE email = ?",
-                    (token, email)
-                )
-            return redirect(url_for("index"))
-        return "E-mail ou senha incorretos.", 401
-    return open(os.path.join(BASE_DIR, "login.html"), encoding="utf-8").read()
-
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect(url_for("login"))
-
-@app.route("/criar/<senha_mestra>/<email_cliente>")
-def criar_acesso(senha_mestra, email_cliente):
-    if senha_mestra != os.environ.get("ADMIN_KEY", "jon369"):
-        return "Acesso negado.", 403
-    senha_plana = secrets.token_hex(4)
-    with get_db() as conn:
-        conn.execute(
-            "INSERT OR REPLACE INTO usuarios (email, senha, ativo) VALUES (?, ?, 1)",
-            (email_cliente.lower(), generate_password_hash(senha_plana))
-        )
-    return f"""
-    <h2 style='font-family:monospace'>✅ Acesso criado</h2>
-    <p><b>Email:</b> {email_cliente}</p>
-    <p><b>Senha:</b> {senha_plana}</p>
-    <p>Envie ao cliente via WhatsApp.</p>
-    """
-
-# ─────────────────────────────────────────────
-#  PÁGINAS
+#  PÁGINA INICIAL (FUNIL ABERTO)
 # ─────────────────────────────────────────────
 @app.route("/")
-@login_required
 def index():
     return open(os.path.join(BASE_DIR, "index.html"), encoding="utf-8").read()
 
+@app.route("/status")
+def status():
+    # Rota simples para o frontend saber se a API do Whisper está configurada
+    return jsonify({"groq": bool(GROQ_API_KEY)})
+
 # ─────────────────────────────────────────────
-#  PWA
+#  PWA & ESTÁTICOS
 # ─────────────────────────────────────────────
 @app.route("/manifest.json")
 def manifest():
@@ -180,7 +81,6 @@ def _groq_transcrever(audio_bytes, filename):
     return texto, segs
 
 @app.route("/transcrever", methods=["POST"])
-@login_required
 def transcrever():
     if not GROQ_API_KEY:
         return jsonify({"erro": "GROQ_API_KEY não configurada."}), 400
@@ -280,7 +180,6 @@ def build_vf_estatico(w: str, h: str, legenda: str) -> str:
 #  CONVERSOR
 # ─────────────────────────────────────────────
 @app.route("/converter", methods=["POST"])
-@login_required
 def converter():
     img_file    = request.files.get("imagem")
     aud_file    = request.files.get("audio")
@@ -388,3 +287,4 @@ def healthz():
 @app.errorhandler(Exception)
 def handle_exception(e):
     return f"<pre>{traceback.format_exc()}</pre>", 500
+                                
