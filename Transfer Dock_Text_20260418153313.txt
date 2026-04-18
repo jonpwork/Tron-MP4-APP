@@ -1,1 +1,0 @@
-content://com.google.android.apps.search.assistant.surfaces.voice.robin.fileprovider/attachments/index_vitrine_v2.html
