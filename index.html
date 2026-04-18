@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tron Conversor MP4 — Emc³</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* ── TOKENS ──────────────────────────────── */
+        :root {
+            --bg:        #070a10;
+            --surface:   #0d1421;
+            --surface2:  #111c2e;
+            --border:    #1a2d47;
+            --cyan:      #00e5ff;
+            --purple:    #c026d3;
+            --green:     #00e676;
+            --red:       #ff1744;
+            --text:      #dce8f5;
+            --muted:     #4a6880;
+            --font-main: 'Space Grotesk', sans-serif;
+            --font-head: 'Anton', sans-serif;
+        }
+
+        /* ── RESET ───────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 28px 16px 80px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Fundo com grade de linhas neon */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(0,229,255,.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,229,255,.025) 1px, transparent 1px);
+            background-size: 44px 44px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Glow central */
+        body::after {
+            content: '';
+            position: fixed;
+            top: -20%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px; height: 400px;
+            background: radial-gradient(ellipse, rgba(0,229,255,.07) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* ── HEADER ──────────────────────────────── */
+        header { text-align: center; padding: 8px 0 4px; }
+
+        .logo-img {
+            width: 90px;
+            filter: drop-shadow(0 0 16px var(--cyan));
+            margin-bottom: 14px;
+        }
+
+        .logo-title {
+            font-family: var(--font-head);
+            font-size: 38px;
+            letter-spacing: 5px;
+            background: linear-gradient(90deg, var(--cyan) 30%, var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+
+        .logo-sub {
+            font-size: 10px;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-top: 5px;
+        }
+
+        /* LED status */
+        .led-bar {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0,229,255,.04);
+            border: 1px solid var(--border);
+            border-radius: 99px;
+            padding: 4px 14px;
+            margin-top: 12px;
+        }
+
+        .led {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--cyan);
+            box-shadow: 0 0 8px var(--cyan);
+            animation: blink 2.4s infinite;
+        }
+
+        .led.active {
+            background: var(--green);
+            box-shadow: 0 0 12px var(--green);
+            animation: blink-fast .5s infinite;
+        }
+
+        .led-text {
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        @keyframes blink      { 0%,100%{opacity:.4} 50%{opacity:1} }
+        @keyframes blink-fast { 0%,100%{opacity:.7} 50%{opacity:1} }
+
+        /* ── CARD ────────────────────────────────── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 28px 24px;
+            box-shadow: 0 0 40px rgba(0,229,255,.04), 0 24px 48px rgba(0,0,0,.5);
+        }
+
+        .section-tag {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--cyan);
+            margin-bottom: 10px;
+        }
+
+        /* ── DROP ZONES ──────────────────────────── */
+        .drop-zone {
+            position: relative;
+            border: 1.5px dashed var(--border);
+            border-radius: 12px;
+            padding: 18px 14px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color .2s, background .2s;
+            margin-bottom: 16px;
+        }
+
+        .drop-zone:hover, .drop-zone.over {
+            border-color: var(--cyan);
+            background: rgba(0,229,255,.04);
+        }
+
+        .drop-zone input[type="file"] {
+            position: absolute; inset: 0;
+            opacity: 0; cursor: pointer;
+            width: 100%; height: 100%;
+        }
+
+        .drop-icon  { font-size: 26px; margin-bottom: 4px; }
+        .drop-title { font-weight: 700; font-size: 13px; }
+        .drop-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+        .drop-name  { font-size: 11px; color: var(--green); margin-top: 5px; font-weight: 600; }
+
+        /* ── RESOLUTION ──────────────────────────── */
+        .res-grid {
+            display: grid;
+            grid-template-columns: repeat(3,1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .res-btn {
+            background: transparent;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 4px;
+            color: var(--muted);
+            font-family: var(--font-main);
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .2s;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .res-btn:hover  { border-color: var(--cyan); color: var(--cyan); }
+        .res-btn.active { border-color: var(--cyan); background: rgba(0,229,255,.07); color: var(--cyan); }
+        .res-icon       { font-size: 18px; display: block; margin-bottom: 3px; }
+
+        /* ── DIVIDER ─────────────────────────────── */
+        hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+        /* ── LEGENDA ─────────────────────────────── */
+        .legenda-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        textarea {
+            width: 100%;
+            background: var(--bg);
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-family: var(--font-main);
+            font-size: 13px;
+            padding: 12px 14px;
+            resize: vertical;
+            min-height: 72px;
+            outline: none;
+            transition: border-color .2s;
+        }
+
+        textarea:focus { border-color: var(--cyan); }
+        textarea::placeholder { color: var(--muted); }
+
+        /* Botão transcrever */
+        .btn-whisper {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: transparent;
+            border: 1.5px solid var(--purple);
+            border-radius: 8px;
+            color: var(--purple);
+            font-family: var(--font-main);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 6px 12px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all .2s;
+        }
+
+        .btn-whisper:hover:not(:disabled) { background: rgba(192,38,211,.1); }
+        .btn-whisper:disabled { opacity: .4; cursor: not-allowed; }
+
+        /* ── BOTÃO PRINCIPAL ─────────────────────── */
+        .btn-main {
+            width: 100%;
+            padding: 17px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(90deg, var(--cyan), #0084b4);
+            color: #000;
+            font-family: var(--font-head);
+            font-size: 20px;
+            letter-spacing: 3px;
+            cursor: pointer;
+            transition: all .25s;
+            position: relative;
+        }
+
+        .btn-main:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px rgba(0,229,255,.35);
+        }
+
+        .btn-main:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+        /* ── PROGRESS ────────────────────────────── */
+        .progress-wrap { display: none; margin-top: 18px; }
+        .progress-wrap.on { display: block; }
+
+        .progress-track {
+            background: var(--border);
+            border-radius: 99px;
+            height: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 99px;
+            background: linear-gradient(90deg, var(--cyan), var(--purple));
+            width: 0%;
+            transition: width .5s ease;
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+        .progress-lbl {
+            font-size: 11px;
+            color: var(--muted);
+            text-align: center;
+            margin-top: 7px;
+        }
+
+        /* ── PAINEL DE TRANSCRIÇÃO ───────────────── */
+        .transcription-panel {
+            display: none;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .transcription-panel.visible { display: block; }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .panel-title {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--purple);
+        }
+
+        .panel-actions { display: flex; gap: 8px; }
+
+        .panel-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: var(--font-main);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 6px 12px;
+            cursor: pointer;
+            transition: all .2s;
+        }
+
+        .panel-btn:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        .panel-btn.copied {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        #transcription-text {
+            font-size: 13px;
+            line-height: 1.7;
+            color: var(--text);
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 260px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        #transcription-text::-webkit-scrollbar { width: 4px; }
+        #transcription-text::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+        /* Botão "usar como legenda" */
+        .btn-use-caption {
+            width: 100%;
+            margin-top: 14px;
+            padding: 10px;
+            background: transparent;
+            border: 1.5px dashed var(--cyan);
+            border-radius: 10px;
+            color: var(--cyan);
+            font-family: var(--font-main);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .2s;
+            letter-spacing: 1px;
+        }
+
+        .btn-use-caption:hover { background: rgba(0,229,255,.07); }
+
+        /* ── TOAST ───────────────────────────────── */
+        #toast {
+            position: fixed;
+            bottom: 24px; left: 50%;
+            transform: translateX(-50%) translateY(16px);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 11px 22px;
+            font-size: 12px;
+            font-weight: 600;
+            opacity: 0;
+            transition: all .3s;
+            pointer-events: none;
+            z-index: 999;
+            white-space: nowrap;
+        }
+
+        #toast.show    { opacity: 1; transform: translateX(-50%) translateY(0); }
+        #toast.success { border-color: var(--green); color: var(--green); }
+        #toast.error   { border-color: var(--red);   color: var(--red); }
+        #toast.info    { border-color: var(--cyan);  color: var(--cyan); }
+
+        /* ── FOOTER ──────────────────────────────── */
+        footer {
+            text-align: center;
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: 2px;
+            margin-top: 8px;
+        }
+
+        footer span { color: var(--cyan); }
+
+        .logout-link {
+            display: block;
+            text-align: center;
+            font-size: 10px;
+            color: var(--muted);
+            text-decoration: none;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 4px;
+            transition: color .2s;
+        }
+
+        .logout-link:hover { color: var(--red); }
+
+        /* WhatsApp float */
+        .wa-float {
+            position: fixed;
+            bottom: 24px; right: 20px;
+            background: #25d366;
+            width: 50px; height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 16px rgba(0,0,0,.4);
+            transition: .25s;
+            z-index: 100;
+        }
+
+        .wa-float:hover { transform: scale(1.12) rotate(8deg); }
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+    <!-- HEADER -->
+    <header>
+        <!-- Logo SVG inline — loop de infinito Tron -->
+        <svg class="logo-img" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="38" cy="40" rx="28" ry="28" stroke="#00e5ff" stroke-width="3" fill="none"/>
+            <ellipse cx="82" cy="40" rx="28" ry="28" stroke="#00e5ff" stroke-width="3" fill="none"/>
+            <path d="M38 12 Q60 40 82 12" stroke="#00e5ff" stroke-width="3" fill="none"/>
+            <path d="M38 68 Q60 40 82 68" stroke="#00e5ff" stroke-width="3" fill="none"/>
+            <!-- onda sonora -->
+            <polyline points="22,40 26,30 30,50 34,35 38,40" stroke="#c026d3" stroke-width="2" fill="none"/>
+            <!-- quadrado vídeo -->
+            <rect x="72" y="32" width="16" height="16" stroke="#c026d3" stroke-width="2" fill="none" rx="2"/>
+            <!-- seta -->
+            <path d="M52 40 L68 40 M64 36 L68 40 L64 44" stroke="#00e5ff" stroke-width="2"/>
+        </svg>
+
+        <div class="logo-title">TRON</div>
+        <div class="logo-sub">Conversor MP4 · Emc³</div>
+
+        <div class="led-bar">
+            <div class="led" id="statusLed"></div>
+            <span class="led-text" id="ledText">Sistema Online</span>
+        </div>
+    </header>
+
+    <!-- CARD PRINCIPAL -->
+    <div class="card">
+
+        <!-- 01 — IMAGEM -->
+        <div class="section-tag">01 — Imagem de capa</div>
+        <div class="drop-zone" id="zoneImg">
+            <input type="file" id="inputImg" accept="image/*">
+            <div class="drop-icon">🖼️</div>
+            <div class="drop-title">Arraste ou toque para selecionar</div>
+            <div class="drop-sub">JPG · PNG · WEBP</div>
+            <div class="drop-name" id="nameImg"></div>
+        </div>
+
+        <!-- 02 — ÁUDIO -->
+        <div class="section-tag">02 — Áudio</div>
+        <div class="drop-zone" id="zoneAud">
+            <input type="file" id="inputAud" accept="audio/*">
+            <div class="drop-icon">🎵</div>
+            <div class="drop-title">Arraste ou toque para selecionar</div>
+            <div class="drop-sub">MP3 · WAV · M4A — até 300 MB · 10 min</div>
+            <div class="drop-name" id="nameAud"></div>
+        </div>
+
+        <hr>
+
+        <!-- 03 — RESOLUÇÃO -->
+        <div class="section-tag">03 — Resolução</div>
+        <div class="res-grid">
+            <button class="res-btn" data-res="720x1280" onclick="pickRes(this)">
+                <span class="res-icon">📱</span>720×1280<br>Story/Reels
+            </button>
+            <button class="res-btn active" data-res="1080x1080" onclick="pickRes(this)">
+                <span class="res-icon">⬛</span>1080×1080<br>Feed
+            </button>
+            <button class="res-btn" data-res="1280x720" onclick="pickRes(this)">
+                <span class="res-icon">🖥️</span>1280×720<br>YouTube
+            </button>
+        </div>
+
+        <hr>
+
+        <!-- 04 — LEGENDA -->
+        <div class="section-tag">04 — Legenda no vídeo</div>
+        <div class="legenda-header">
+            <span style="font-size:10px;color:var(--muted)">Estilo TikTok · fonte gorda · contorno preto</span>
+            <button class="btn-whisper" id="btnWhisper" onclick="transcrever()">
+                🎙️ Transcrever áudio
+            </button>
+        </div>
+        <textarea id="legendaInput" placeholder="Ex: Isso vai mudar sua vida pra sempre..."></textarea>
+        <div style="font-size:10px;color:var(--muted);margin-top:5px;min-height:14px" id="whisperStatus"></div>
+
+        <hr>
+
+        <!-- BOTÃO GERAR -->
+        <button class="btn-main" id="btnConverter" onclick="converter()">
+            GERAR VÍDEO
+        </button>
+
+        <!-- PROGRESS -->
+        <div class="progress-wrap" id="progressWrap">
+            <div class="progress-track">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-lbl" id="progressLbl">Processando...</div>
+        </div>
+
+    </div>
+
+    <!-- PAINEL DE TRANSCRIÇÃO -->
+    <div class="transcription-panel" id="transcriptionPanel">
+        <div class="panel-header">
+            <span class="panel-title">📝 Transcrição do Áudio</span>
+            <div class="panel-actions">
+                <button class="panel-btn" id="btnCopy" onclick="copiarTexto()">
+                    📋 Copiar
+                </button>
+                <button class="panel-btn" onclick="compartilharTexto()">
+                    🔗 Compartilhar
+                </button>
+            </div>
+        </div>
+        <div id="transcription-text"></div>
+        <button class="btn-use-caption" onclick="usarComoLegenda()">
+            ↳ Usar como legenda no vídeo
+        </button>
+    </div>
+
+    <!-- FOOTER -->
+    <footer>
+        © 2025 <span>Emc³</span> · Dev: Jon Padilha · Todos os direitos reservados
+    </footer>
+    <a href="/logout" class="logout-link">↩ sair do sistema</a>
+
+</div><!-- /wrapper -->
+
+<!-- WhatsApp float -->
+<a href="https://wa.me/5521964440418" target="_blank" class="wa-float" title="Suporte WhatsApp">
+    <svg width="26" height="26" fill="white" viewBox="0 0 16 16">
+        <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.06 3.973L0 16l4.104-1.077A7.888 7.888 0 0 0 7.994 14.5c4.367 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 13.066c-1.224 0-2.427-.33-3.475-.955l-.25-.148-2.583.678.69-2.526-.162-.258a6.591 6.591 0 0 1-1.012-3.454c0-3.63 2.961-6.592 6.596-6.592 1.756 0 3.406.684 4.646 1.926 1.242 1.242 1.925 2.89 1.923 4.646-.002 3.631-2.96 6.592-6.59 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.17-.479 1.338-.942.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
+    </svg>
+</a>
+
+<div id="toast"></div>
+
+<script>
+// ── ESTADO ───────────────────────────────────────
+let resolucao = "1080x1080";
+let ultimaTranscricao = "";
+
+// ── DROP ZONES ───────────────────────────────────
+function setupDrop(zoneId, inputId, labelId) {
+    const zone  = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    const label = document.getElementById(labelId);
+
+    input.addEventListener("change", () => {
+        label.textContent = input.files[0]?.name || "";
+    });
+    zone.addEventListener("dragover",  e => { e.preventDefault(); zone.classList.add("over"); });
+    zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+    zone.addEventListener("drop",      () => zone.classList.remove("over"));
+}
+
+setupDrop("zoneImg", "inputImg", "nameImg");
+setupDrop("zoneAud", "inputAud", "nameAud");
+
+// ── RESOLUÇÃO ────────────────────────────────────
+function pickRes(btn) {
+    document.querySelectorAll(".res-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    resolucao = btn.dataset.res;
+}
+
+// ── TOAST ────────────────────────────────────────
+function toast(msg, type = "info") {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.className = "show " + type;
+    setTimeout(() => el.className = "", 3400);
+}
+
+// ── PROGRESS ────────────────────────────────────
+function setProgress(pct, lbl) {
+    document.getElementById("progressWrap").classList.add("on");
+    document.getElementById("progressFill").style.width = pct + "%";
+    document.getElementById("progressLbl").textContent  = lbl;
+}
+
+function resetProgress() {
+    document.getElementById("progressWrap").classList.remove("on");
+    document.getElementById("progressFill").style.width = "0%";
+}
+
+// ── LED ─────────────────────────────────────────
+function setLed(active, txt) {
+    document.getElementById("statusLed").className = "led" + (active ? " active" : "");
+    document.getElementById("ledText").textContent  = txt;
+}
+
+// ── TRANSCRIÇÃO ──────────────────────────────────
+async function transcrever() {
+    const aud = document.getElementById("inputAud").files[0];
+    if (!aud) { toast("Selecione o áudio primeiro.", "error"); return; }
+
+    const btn    = document.getElementById("btnWhisper");
+    const status = document.getElementById("whisperStatus");
+    btn.disabled = true;
+    btn.textContent = "⏳ Transcrevendo...";
+    status.textContent = "Enviando para Groq Whisper...";
+    setLed(true, "Transcrevendo...");
+
+    try {
+        const fd = new FormData();
+        fd.append("audio", aud);
+
+        const res  = await fetch("/transcrever", { method: "POST", body: fd });
+        const data = await res.json();
+
+        if (data.erro) { status.textContent = "❌ " + data.erro; toast("Erro na transcrição.", "error"); return; }
+
+        ultimaTranscricao = data.texto;
+        status.textContent = "✅ Transcrição concluída!";
+
+        // Mostra painel de transcrição
+        const panel = document.getElementById("transcriptionPanel");
+        document.getElementById("transcription-text").textContent = data.texto;
+        panel.classList.add("visible");
+        panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+        toast("Transcrição concluída!", "success");
+
+    } catch(e) {
+        status.textContent = "❌ Erro de conexão.";
+        toast("Erro de conexão.", "error");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "🎙️ Transcrever áudio";
+        setLed(false, "Sistema Online");
+    }
+}
+
+// ── COPIAR ───────────────────────────────────────
+async function copiarTexto() {
+    if (!ultimaTranscricao) return;
+    try {
+        await navigator.clipboard.writeText(ultimaTranscricao);
+        const btn = document.getElementById("btnCopy");
+        btn.classList.add("copied");
+        btn.textContent = "✅ Copiado!";
+        setTimeout(() => { btn.classList.remove("copied"); btn.innerHTML = "📋 Copiar"; }, 2000);
+        toast("Texto copiado!", "success");
+    } catch { toast("Não foi possível copiar.", "error"); }
+}
+
+// ── COMPARTILHAR ─────────────────────────────────
+async function compartilharTexto() {
+    if (!ultimaTranscricao) return;
+    if (navigator.share) {
+        try {
+            await navigator.share({ title: "Transcrição — Tron Conversor", text: ultimaTranscricao });
+        } catch {}
+    } else {
+        await copiarTexto();
+        toast("Link copiado para a área de transferência.", "info");
+    }
+}
+
+// ── USAR COMO LEGENDA ────────────────────────────
+function usarComoLegenda() {
+    if (!ultimaTranscricao) return;
+    document.getElementById("legendaInput").value = ultimaTranscricao;
+    document.getElementById("legendaInput").scrollIntoView({ behavior: "smooth" });
+    toast("Texto colado no campo de legenda!", "success");
+}
+
+// ── CONVERTER ────────────────────────────────────
+async function converter() {
+    const img     = document.getElementById("inputImg").files[0];
+    const aud     = document.getElementById("inputAud").files[0];
+    const legenda = document.getElementById("legendaInput").value.trim();
+
+    if (!img || !aud) { toast("Selecione imagem e áudio.", "error"); return; }
+
+    const btn = document.getElementById("btnConverter");
+    btn.disabled = true;
+    btn.textContent = "PROCESSANDO...";
+    setLed(true, "Gerando vídeo...");
+    setProgress(8, "Enviando arquivos...");
+
+    const fd = new FormData();
+    fd.append("imagem",   img);
+    fd.append("audio",    aud);
+    fd.append("resolucao", resolucao);
+    fd.append("legenda",   legenda);
+
+    let fake = 8;
+    const ticker = setInterval(() => {
+        if (fake < 82) { fake += Math.random() * 3.5; setProgress(Math.min(fake, 82), "FFmpeg processando..."); }
+    }, 1400);
+
+    try {
+        const res = await fetch("/converter", { method: "POST", body: fd });
+        clearInterval(ticker);
+
+        if (!res.ok) {
+            const err = await res.text();
+            resetProgress();
+            toast("Erro: " + err.slice(0, 90), "error");
+            return;
+        }
+
+        setProgress(100, "Pronto! Baixando...");
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement("a");
+        a.href = url; a.download = "tron_clipe.mp4"; a.click();
+        URL.revokeObjectURL(url);
+
+        toast("✅ Vídeo gerado com sucesso!", "success");
+        setTimeout(resetProgress, 2200);
+
+    } catch(e) {
+        clearInterval(ticker);
+        resetProgress();
+        toast("Erro de conexão.", "error");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "GERAR VÍDEO";
+        setLed(false, "Sistema Online");
+    }
+}
+</script>
+</body>
+</html>

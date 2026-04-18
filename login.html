@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tron Conversor — Acesso</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:      #070a10;
+            --surface: #0d1421;
+            --border:  #1a2d47;
+            --cyan:    #00e5ff;
+            --purple:  #c026d3;
+            --green:   #00e676;
+            --red:     #ff1744;
+            --text:    #dce8f5;
+            --muted:   #4a6880;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 24px 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Grade neon de fundo */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(0,229,255,.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,229,255,.025) 1px, transparent 1px);
+            background-size: 44px 44px;
+            pointer-events: none;
+        }
+
+        /* Glow central */
+        body::after {
+            content: '';
+            position: fixed;
+            top: -10%; left: 50%;
+            transform: translateX(-50%);
+            width: 500px; height: 350px;
+            background: radial-gradient(ellipse, rgba(0,229,255,.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 380px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 28px;
+        }
+
+        /* ── HEADER ── */
+        header { text-align: center; }
+
+        .logo-svg {
+            width: 80px;
+            filter: drop-shadow(0 0 14px var(--cyan));
+            margin-bottom: 14px;
+        }
+
+        .logo-title {
+            font-family: 'Anton', sans-serif;
+            font-size: 36px;
+            letter-spacing: 5px;
+            background: linear-gradient(90deg, var(--cyan) 30%, var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+
+        .logo-sub {
+            font-size: 10px;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-top: 5px;
+        }
+
+        /* ── CARD ── */
+        .card {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 32px 28px;
+            box-shadow: 0 0 40px rgba(0,229,255,.04), 0 24px 48px rgba(0,0,0,.5);
+        }
+
+        .card-title {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--cyan);
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        /* ── INPUTS ── */
+        .field { margin-bottom: 16px; }
+
+        label {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 7px;
+        }
+
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            background: var(--bg);
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            padding: 13px 16px;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+        }
+
+        input:focus {
+            border-color: var(--cyan);
+            box-shadow: 0 0 0 3px rgba(0,229,255,.08);
+        }
+
+        input::placeholder { color: var(--muted); }
+
+        /* ── BOTÃO ── */
+        .btn-login {
+            width: 100%;
+            margin-top: 8px;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(90deg, var(--cyan), #0084b4);
+            color: #000;
+            font-family: 'Anton', sans-serif;
+            font-size: 18px;
+            letter-spacing: 3px;
+            cursor: pointer;
+            transition: all .25s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px rgba(0,229,255,.35);
+        }
+
+        .btn-login:active { transform: translateY(0); }
+
+        /* Erro */
+        .error-msg {
+            display: none;
+            background: rgba(255,23,68,.08);
+            border: 1px solid var(--red);
+            border-radius: 10px;
+            color: var(--red);
+            font-size: 12px;
+            font-weight: 600;
+            padding: 10px 14px;
+            text-align: center;
+            margin-top: 14px;
+        }
+
+        .error-msg.show { display: block; }
+
+        /* ── FOOTER ── */
+        footer {
+            text-align: center;
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: 2px;
+        }
+
+        footer span { color: var(--cyan); }
+
+        .wa-float {
+            position: fixed;
+            bottom: 24px; right: 20px;
+            background: #25d366;
+            width: 50px; height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 16px rgba(0,0,0,.4);
+            transition: .25s;
+            z-index: 100;
+        }
+
+        .wa-float:hover { transform: scale(1.12) rotate(8deg); }
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+    <header>
+        <svg class="logo-svg" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="38" cy="40" rx="28" ry="28" stroke="#00e5ff" stroke-width="3" fill="none"/>
+            <ellipse cx="82" cy="40" rx="28" ry="28" stroke="#00e5ff" stroke-width="3" fill="none"/>
+            <path d="M38 12 Q60 40 82 12" stroke="#00e5ff" stroke-width="3" fill="none"/>
+            <path d="M38 68 Q60 40 82 68" stroke="#00e5ff" stroke-width="3" fill="none"/>
+            <polyline points="22,40 26,30 30,50 34,35 38,40" stroke="#c026d3" stroke-width="2" fill="none"/>
+            <rect x="72" y="32" width="16" height="16" stroke="#c026d3" stroke-width="2" fill="none" rx="2"/>
+            <path d="M52 40 L68 40 M64 36 L68 40 L64 44" stroke="#00e5ff" stroke-width="2"/>
+        </svg>
+        <div class="logo-title">TRON</div>
+        <div class="logo-sub">Conversor MP4 · Emc³</div>
+    </header>
+
+    <div class="card">
+        <div class="card-title">🔐 Acesso Exclusivo</div>
+
+        <form action="/login" method="post" onsubmit="return validate()">
+            <div class="field">
+                <label>E-mail</label>
+                <input type="email" name="email" id="email"
+                       placeholder="seu@email.com" required autocomplete="email">
+            </div>
+            <div class="field">
+                <label>Senha</label>
+                <input type="password" name="senha" id="senha"
+                       placeholder="••••••••" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn-login">ENTRAR</button>
+        </form>
+
+        <div class="error-msg" id="errorMsg">
+            E-mail ou senha incorretos. Tente novamente.
+        </div>
+    </div>
+
+    <footer>
+        © 2025 <span>Emc³</span> · Dev: Jon Padilha<br>
+        <span style="color:var(--muted)">Acesso exclusivo para membros Hotmart</span>
+    </footer>
+
+</div>
+
+<a href="https://wa.me/5521964440418" target="_blank" class="wa-float" title="Suporte">
+    <svg width="26" height="26" fill="white" viewBox="0 0 16 16">
+        <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.06 3.973L0 16l4.104-1.077A7.888 7.888 0 0 0 7.994 14.5c4.367 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 13.066c-1.224 0-2.427-.33-3.475-.955l-.25-.148-2.583.678.69-2.526-.162-.258a6.591 6.591 0 0 1-1.012-3.454c0-3.63 2.961-6.592 6.596-6.592 1.756 0 3.406.684 4.646 1.926 1.242 1.242 1.925 2.89 1.923 4.646-.002 3.631-2.96 6.592-6.59 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.17-.479 1.338-.942.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
+    </svg>
+</a>
+
+<script>
+    // Mostra erro se vier ?erro na URL (redirect do Flask após login falho)
+    function validate() {
+        const email = document.getElementById("email").value.trim();
+        const senha = document.getElementById("senha").value;
+        if (!email || !senha) {
+            document.getElementById("errorMsg").classList.add("show");
+            return false;
+        }
+        return true;
+    }
+
+    // Checa se veio redirecionado com erro do servidor
+    if (window.location.search.includes("erro") ||
+        document.referrer.includes("/login")) {
+        // só mostra se vier de um POST falho — o Flask retorna 401
+        // nesse caso o browser já mostra o texto de erro do servidor
+    }
+</script>
+</body>
+</html>
