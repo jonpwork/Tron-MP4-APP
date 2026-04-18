@@ -2,19 +2,30 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Tron Conversor MP4</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- PWA -->
+  <title>Tron Conversor MP4</title>
+
   <link rel="manifest" href="/static/manifest.json">
   <meta name="theme-color" content="#00e5ff">
 
   <style>
     body {
-      font-family: Arial, sans-serif;
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
       background: #ffffff;
+      color: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 420px;
       text-align: center;
-      padding: 40px;
+      padding: 20px;
     }
 
     h1 {
@@ -25,97 +36,57 @@
 
     p {
       font-size: 18px;
-      margin-bottom: 30px;
+      margin-bottom: 25px;
+      line-height: 1.4;
     }
 
     input[type="file"] {
-      margin: 20px 0;
+      width: 100%;
+      margin-bottom: 20px;
     }
 
     button {
+      width: 100%;
       background: #00e5ff;
       border: none;
-      padding: 15px 30px;
-      font-size: 18px;
+      color: #000;
+      font-size: 20px;
+      padding: 14px;
+      border-radius: 8px;
       cursor: pointer;
-      border-radius: 6px;
+      transition: background 0.2s ease;
     }
 
-    button:disabled {
-      background: #999;
+    button:hover {
+      background: #00cde0;
     }
 
-    #status {
-      margin-top: 20px;
-      font-weight: bold;
+    footer {
+      margin-top: 30px;
+      font-size: 14px;
+      opacity: 0.6;
     }
   </style>
 </head>
 <body>
 
-  <h1>Tron Conversor MP4</h1>
+  <div class="container">
+    <h1>Tron<br>Conversor MP4</h1>
 
-  <p>
-    Converta vídeos para MP4 diretamente do navegador.<br>
-    Simples • Rápido • Sem instalar programas
-  </p>
+    <p>
+      Converta vídeos para MP4 diretamente do navegador.<br>
+      <strong>Simples • Rápido • Sem instalar</strong>
+    </p>
 
-  <form id="form">
-    <input type="file" name="video" accept="video/*" required />
-    <br>
-    <button type="submit">Converter para MP4</button>
-  </form>
+    <form action="/convert" method="post" enctype="multipart/form-data">
+      <input type="file" name="video" accept="video/*" required>
+      <button type="submit">Converter para MP4</button>
+    </form>
 
-  <div id="status"></div>
-
-  <script>
-    const form = document.getElementById("form");
-    const status = document.getElementById("status");
-    const button = form.querySelector("button");
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const fileInput = form.querySelector("input[type=file]");
-      if (!fileInput.files.length) {
-        alert("Selecione um vídeo");
-        return;
-      }
-
-      const data = new FormData();
-      data.append("video", fileInput.files[0]);
-
-      button.disabled = true;
-      status.innerText = "⏳ Convertendo... aguarde";
-
-      try {
-        const response = await fetch("/convert", {
-          method: "POST",
-          body: data
-        });
-
-        if (!response.ok) {
-          throw new Error("Erro na conversão");
-        }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "video_convertido.mp4";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-
-        status.innerText = "✅ Conversão concluída!";
-      } catch (err) {
-        status.innerText = "❌ Erro ao converter o vídeo";
-      } finally {
-        button.disabled = false;
-      }
-    });
-  </script>
+    <footer>
+      © Tron MP4
+    </footer>
+  </div>
 
 </body>
 </html>
