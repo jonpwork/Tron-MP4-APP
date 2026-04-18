@@ -1,18 +1,23 @@
 import os
+import uuid
 import subprocess
-from flask import Flask, render_template, request, send_file, jsonify
+from flask import Flask, render_template, request, send_file, redirect, url_for
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
-OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
 
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+OUTPUT_FOLDER = os.path.join(BASE_DIR, "outputs")
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["OUTPUT_FOLDER"] = OUTPUT_FOLDER
+app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500MB
 
 
-@app.route("/")
+@app.route("/", methods=["GET"])
 def index():
     return render_template("index.html")
 
@@ -20,35 +25,36 @@ def index():
 @app.route("/convert", methods=["POST"])
 def convert():
     if "video" not in request.files:
-        return jsonify({"error": "Nenhum arquivo enviado"}), 400
+        return redirect(url_for("index"))
 
-    file = request.files["video"]
+    video = request.files["video"]
 
-    if file.filename == "":
-        return jsonify({"error": "Arquivo inválido"}), 400
+    if video.filename == "":
+        return redirect(url_for("index"))
 
-    input_path = os.path.join(UPLOAD_DIR, file.filename)
-    output_name = os.path.splitext(file.filename)[0] + ".mp4"
-    output_path = os.path.join(OUTPUT_DIR, output_name)
+    uid = uuid.uuid4().hex
+    input_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{uid}_{video.filename}")
+    output_path = os.path.join(app.config["OUTPUT_FOLDER"], f"{uid}.mp4")
 
-    file.save(input_path)
+    video.save(input_path)
 
-    try:
-        subprocess.run(
-            [
-                "ffmpeg",
-                "-y",
-                "-i", input_path,
-                "-movflags", "faststart",
-                "-pix_fmt", "yuv420p",
-                output_path
-            ],
-            check=True
-        )
-    except subprocess.CalledProcessError:
-        return jsonify({"error": "Erro ao converter o vídeo"}), 500
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i", input_path,
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-crf", "23",
+        "-c:a", "aac",
+        output_path
+    ]
 
-    return send_file(output_path, as_attachment=True)
+    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    if not os.path.exists(output_path):
+        return "Erro na conversão", 500
+
+    return send_file(output_path, as_attachment=True, download_name="video.mp4")
 
 
 if __name__ == "__main__":
