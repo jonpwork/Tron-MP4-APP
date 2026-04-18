@@ -1,61 +1,120 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <link rel="manifest" href="/static/manifest.json">
-<meta name="theme-color" content="#00e5ff">
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+  <meta charset="UTF-8" />
   <title>Tron Conversor MP4</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- PWA -->
   <link rel="manifest" href="/static/manifest.json">
   <meta name="theme-color" content="#00e5ff">
 
-  <!-- iOS -->
-  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
-
-  <!-- Básico -->
   <style>
-    <script>
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/static/sw.js");
-}
-</script>
     body {
-      margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      background: #000;
-      color: #fff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .container {
+      font-family: Arial, sans-serif;
+      background: #ffffff;
       text-align: center;
-      padding: 20px;
+      padding: 40px;
     }
+
     h1 {
       color: #00e5ff;
+      font-size: 42px;
+      margin-bottom: 10px;
+    }
+
+    p {
+      font-size: 18px;
+      margin-bottom: 30px;
+    }
+
+    input[type="file"] {
+      margin: 20px 0;
+    }
+
+    button {
+      background: #00e5ff;
+      border: none;
+      padding: 15px 30px;
+      font-size: 18px;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    button:disabled {
+      background: #999;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <h1>Tron Conversor MP4</h1>
-    <p>Converta vídeos para MP4 diretamente do navegador.</p>
-    <p>Simples • Rápido • Sem instalar programas</p>
-  </div>
+  <h1>Tron Conversor MP4</h1>
 
-  <!-- Service Worker -->
+  <p>
+    Converta vídeos para MP4 diretamente do navegador.<br>
+    Simples • Rápido • Sem instalar programas
+  </p>
+
+  <form id="form">
+    <input type="file" name="video" accept="video/*" required />
+    <br>
+    <button type="submit">Converter para MP4</button>
+  </form>
+
+  <div id="status"></div>
+
   <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("/static/sw.js");
-      });
-    }
+    const form = document.getElementById("form");
+    const status = document.getElementById("status");
+    const button = form.querySelector("button");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const fileInput = form.querySelector("input[type=file]");
+      if (!fileInput.files.length) {
+        alert("Selecione um vídeo");
+        return;
+      }
+
+      const data = new FormData();
+      data.append("video", fileInput.files[0]);
+
+      button.disabled = true;
+      status.innerText = "⏳ Convertendo... aguarde";
+
+      try {
+        const response = await fetch("/convert", {
+          method: "POST",
+          body: data
+        });
+
+        if (!response.ok) {
+          throw new Error("Erro na conversão");
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "video_convertido.mp4";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        status.innerText = "✅ Conversão concluída!";
+      } catch (err) {
+        status.innerText = "❌ Erro ao converter o vídeo";
+      } finally {
+        button.disabled = false;
+      }
+    });
   </script>
 
 </body>
