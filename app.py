@@ -1,16 +1,16 @@
-from flask import Flask, send_from_directory, Response
+from flask import Flask, send_from_directory
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-app = Flask(__name__, static_folder="static")
+app = Flask(__name__, static_folder="static", static_url_path="/static")
 
 # Página principal
 @app.route("/")
 def index():
-    return open(os.path.join(BASE_DIR, "index.html"), encoding="utf-8").read()
+    return send_from_directory(BASE_DIR, "index.html")
 
-# Manifest PWA (ESSENCIAL para PWABuilder)
+# Manifest PWA
 @app.route("/static/manifest.json")
 def manifest():
     return send_from_directory(
@@ -22,14 +22,13 @@ def manifest():
 # Service Worker
 @app.route("/static/sw.js")
 def service_worker():
-    response = send_from_directory(
+    return send_from_directory(
         os.path.join(BASE_DIR, "static"),
-        "sw.js"
+        "sw.js",
+        mimetype="application/javascript"
     )
-    response.headers["Content-Type"] = "application/javascript"
-    return response
 
-# Health check (Render)
+# Health check
 @app.route("/health")
 def health():
     return "OK", 200
