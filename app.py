@@ -14,13 +14,16 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["OUTPUT_FOLDER"] = OUTPUT_FOLDER
-app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500MB
+app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024
 
+# Nova rota para o Health Check do Render
+@app.route("/health")
+def health():
+    return "OK", 200
 
 @app.route("/", methods=["GET"])
 def index():
     return render_template("index.html")
-
 
 @app.route("/convert", methods=["POST"])
 def convert():
@@ -28,7 +31,6 @@ def convert():
         return redirect(url_for("index"))
 
     video = request.files["video"]
-
     if video.filename == "":
         return redirect(url_for("index"))
 
@@ -38,6 +40,7 @@ def convert():
 
     video.save(input_path)
 
+    # Comando ffmpeg
     cmd = [
         "ffmpeg",
         "-y",
@@ -49,13 +52,20 @@ def convert():
         output_path
     ]
 
-    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # Removi o DEVNULL para que, caso falhe, você veja o erro nos logs do Render
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Erro no FFmpeg: {e}")
+        return "Erro na conversão", 500
 
     if not os.path.exists(output_path):
-        return "Erro na conversão", 500
+        return "Erro na conversão: arquivo não gerado", 500
 
     return send_file(output_path, as_attachment=True, download_name="video.mp4")
 
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    # Usa a porta fornecida pelo ambiente ou 5000 como padrão
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+    
