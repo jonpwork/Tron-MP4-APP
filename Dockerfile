@@ -1,19 +1,23 @@
-FROM python:3.11-slim
+# Usa uma imagem oficial e leve do Python
+FROM python:3.10-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+# Essa é a cura: Instala o FFmpeg diretamente no sistema!
+RUN apt-get update && apt-get install -y ffmpeg
 
-# Instala FFmpeg
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
+# Define a pasta de trabalho da nossa aplicação
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copia e instala as dependências (já vi que você usa o requirements-1.txt)
+COPY requirements-1.txt .
+RUN pip install --no-cache-dir -r requirements-1.txt
 
+# Copia todo o resto do seu projeto para dentro do contêiner
 COPY . .
 
-# gthread + timeout 0 = sem limite de tempo para o FFmpeg processar
-CMD ["sh", "-c", "gunicorn app:app --bind 0.0.0.0:${PORT:-10000} --workers 1 --worker-class gthread --threads 4 --timeout 0 --log-level info"]
+# Libera a porta que vamos usar
+EXPOSE 10000
+
+# Inicia o app usando o Gunicorn
+# IMPORTANTE: Se o seu arquivo principal de código NÃO se chamar 'app.py', 
+# troque o "app:app" abaixo por "nome_do_seu_arquivo:app".
+CMD ["gunicorn", "-b", "0.0.0.0:10000", "--threads", "4", "app:app"]
