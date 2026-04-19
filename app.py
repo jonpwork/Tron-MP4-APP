@@ -231,11 +231,14 @@ def converter():
                 "-preset", "ultrafast",
                 "-tune", "stillimage",
                 "-crf", "35",
-                # Configuração Segura e Otimizada
-                "-r", "2", 
-                "-g", "2", 
+                "-r", "2", "-g", "2",
                 "-pix_fmt", "yuv420p",
-                "-threads", "2",  # MÁGICA DE VELOCIDADE: Limita as threads para não travar o contêiner do Render
+                
+                # --- O NOSSO ÚNICO TESTE ---
+                # Substituímos o CPU_CORES por "2" para evitar o gargalo no Render
+                "-threads", "2",
+                # ---------------------------
+                
                 "-x264-params", "rc-lookahead=0:ref=1:bframes=0:weightp=0",
                 "-c:a", "aac", "-b:a", "96k", "-ar", "44100",
                 "-shortest", "-movflags", "+faststart",
