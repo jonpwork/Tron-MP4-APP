@@ -279,21 +279,24 @@ def converter():
             raw_ext  = os.path.splitext(aud_file.filename or "")[1].lower()
             aud_ext  = raw_ext if raw_ext in _EXT_SAFE else ".mp3"
 
-            # Salva direto em /tmp com permissão garantida
-            img_fd, img_path = tempfile.mkstemp(suffix=img_ext, dir="/tmp")
-            aud_fd, aud_path = tempfile.mkstemp(suffix=aud_ext, dir="/tmp")
-            os.close(img_fd)
-            os.close(aud_fd)
-            img_file.save(img_path)
-            aud_file.save(aud_path)
-            os.chmod(img_path, 0o644)
-            os.chmod(aud_path, 0o644)
+            # Lê os bytes em memória primeiro, depois salva em /tmp
+            img_bytes = img_file.read()
+            aud_bytes = aud_file.read()
 
-            # Verifica se os arquivos foram salvos corretamente
-            if not os.path.exists(img_path) or os.path.getsize(img_path) == 0:
-                return "Erro: imagem não foi recebida corretamente.", 400
-            if not os.path.exists(aud_path) or os.path.getsize(aud_path) == 0:
-                return "Erro: áudio não foi recebido corretamente.", 400
+            if not img_bytes:
+                return "Erro: imagem vazia ou não recebida.", 400
+            if not aud_bytes:
+                return "Erro: áudio vazio ou não recebido.", 400
+
+            img_fd, img_path = tempfile.mkstemp(suffix=img_ext, dir="/tmp")
+            with os.fdopen(img_fd, "wb") as f:
+                f.write(img_bytes)
+
+            aud_fd, aud_path = tempfile.mkstemp(suffix=aud_ext, dir="/tmp")
+            with os.fdopen(aud_fd, "wb") as f:
+                f.write(aud_bytes)
+
+            del img_bytes, aud_bytes  # libera RAM imediatamente
 
             fd, out_path = tempfile.mkstemp(suffix=".mp4")
             os.close(fd)
@@ -419,4 +422,4 @@ def healthz():
 @app.errorhandler(Exception)
 def handle_exception(e):
     return f"<pre>{traceback.format_exc()}</pre>", 500
-                                           
+    
