@@ -8,8 +8,6 @@ app.config["MAX_CONTENT_LENGTH"] = 300 * 1024 * 1024
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 CPU_CORES    = str(multiprocessing.cpu_count())
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
-TMP_DIR      = os.path.join(BASE_DIR, "tmp_work")
-os.makedirs(TMP_DIR, exist_ok=True)
 FONTS_DIR    = os.path.join(BASE_DIR, "fonts")
 os.makedirs(FONTS_DIR, exist_ok=True)
 
@@ -53,7 +51,6 @@ def service_worker():
 def static_files(filename):
     return send_file(os.path.join(BASE_DIR, "static", filename))
 
-# ── TRANSCRIÇÃO ───────────────────────────────
 _MIME_MAP = {
     ".mp3": "audio/mpeg", ".mp4": "audio/mp4", ".m4a": "audio/mp4",
     ".wav": "audio/wav",  ".webm": "audio/webm", ".ogg": "audio/ogg",
@@ -66,11 +63,10 @@ def _mime_for(filename):
 
 def _groq_transcrever(audio_bytes, filename):
     mime = _mime_for(filename)
-    safe_filename = filename if filename else "audio.mp3"
     resp = http_requests.post(
         "https://api.groq.com/openai/v1/audio/transcriptions",
         headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-        files={"file": (safe_filename, audio_bytes, mime)},
+        files={"file": (filename or "audio.mp3", audio_bytes, mime)},
         data={
             "model":                     "whisper-large-v3-turbo",
             "language":                  "pt",
@@ -81,17 +77,10 @@ def _groq_transcrever(audio_bytes, filename):
     )
     if resp.status_code != 200:
         raise Exception(f"Groq {resp.status_code}: {resp.text}")
-    data  = resp.json()
-    texto = (data.get("text") or "").strip()
-    segs  = [
-        {"start": float(s.get("start", 0)), "end": float(s.get("end", 0)), "text": (s.get("text") or "").strip()}
-        for s in (data.get("segments") or [])
-    ]
-    palavras = [
-        {"word": (w.get("word") or "").strip(), "start": float(w.get("start", 0)), "end": float(w.get("end", 0))}
-        for w in (data.get("words") or [])
-        if (w.get("word") or "").strip()
-    ]
+    data     = resp.json()
+    texto    = (data.get("text") or "").strip()
+    segs     = [{"start": float(s.get("start",0)), "end": float(s.get("end",0)), "text": (s.get("text") or "").strip()} for s in (data.get("segments") or [])]
+    palavras = [{"word": (w.get("word") or "").strip(), "start": float(w.get("start",0)), "end": float(w.get("end",0))} for w in (data.get("words") or []) if (w.get("word") or "").strip()]
     return texto, segs, palavras
 
 @app.route("/transcrever", methods=["POST"])
@@ -107,10 +96,8 @@ def transcrever():
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 
-# ── ASS ───────────────────────────────────────
 def _ts_ass(s):
-    h = int(s // 3600); m = int((s % 3600) // 60)
-    sc = int(s % 60);   cs = int(round((s - int(s)) * 100))
+    h=int(s//3600); m=int((s%3600)//60); sc=int(s%60); cs=int(round((s-int(s))*100))
     return f"{h}:{m:02d}:{sc:02d}.{cs:02d}"
 
 def gerar_ass(dados, w, h, modo_dados="segmentos"):
@@ -131,42 +118,32 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
     lines = []
     if modo_dados == "palavras" and dados:
-        grupos = [dados[i:i+4] for i in range(0, len(dados), 4)]
-        for g in grupos:
+        for g in [dados[i:i+4] for i in range(0, len(dados), 4)]:
             if not g: continue
-            start = g[0]["start"]; end = g[-1]["end"]
-            if end <= start: end = start + 0.5
-            partes = []
-            for pw in g:
-                dur_cs = max(1, int(round((pw["end"] - pw["start"]) * 100)))
-                txt_w  = pw["word"].strip().replace("{","").replace("}","").replace("\\","")
-                partes.append(f"{{\\k{dur_cs}}}{txt_w}")
+            start=g[0]["start"]; end=g[-1]["end"]
+            if end<=start: end=start+0.5
+            partes=[f"{{\\k{max(1,int(round((pw['end']-pw['start'])*100)))}}}{pw['word'].strip().replace('{','').replace('}','').replace(chr(92),'')}" for pw in g]
             lines.append(f"Dialogue: 0,{_ts_ass(start)},{_ts_ass(end)},Tron,,0,0,0,,{' '.join(partes)}")
     else:
         for seg in dados:
-            txt = seg.get("text","").strip()
+            txt=seg.get("text","").strip()
             if not txt: continue
-            if len(txt) > 35:
-                txt = textwrap.fill(txt, width=35, max_lines=2, placeholder="...").replace("\n","\\N")
-            txt = txt.replace("{","").replace("}","")
+            if len(txt)>35: txt=textwrap.fill(txt,width=35,max_lines=2,placeholder="...").replace("\n","\\N")
+            txt=txt.replace("{","").replace("}","")
             lines.append(f"Dialogue: 0,{_ts_ass(seg['start'])},{_ts_ass(seg['end'])},Tron,,0,0,0,,{txt}")
     return header + "\n".join(lines)
 
-# ── LEGENDA ESTÁTICA ──────────────────────────
 def _esc(txt):
     return txt.replace("\\","\\\\").replace("'","\\'").replace(":","\\:").replace("[","\\[").replace("]","\\]").replace(",","\\,")
 
 def build_vf_estatico(w, h, legenda):
-    scale = f"scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:black"
+    scale=f"scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:black"
     if not legenda.strip(): return scale
-    txt  = _esc(legenda.strip())
-    font = f"fontfile={FONT_PATH}" if os.path.exists(FONT_PATH) else "font=Impact"
-    fs   = int(int(w) * 0.072)
-    mb   = int(int(h) * 0.06)
-    dt   = f"drawtext={font}:text='{txt}':fontcolor=white:fontsize={fs}:bordercolor=black:borderw=5:shadowcolor=black@0.65:shadowx=2:shadowy=3:box=1:boxcolor=black@0.38:boxborderw=14:x=(w-text_w)/2:y=h-text_h-{mb}"
-    return f"{scale},{dt}"
+    txt=_esc(legenda.strip())
+    font=f"fontfile={FONT_PATH}" if os.path.exists(FONT_PATH) else "font=Impact"
+    fs=int(int(w)*0.072); mb=int(int(h)*0.06)
+    return f"{scale},drawtext={font}:text='{txt}':fontcolor=white:fontsize={fs}:bordercolor=black:borderw=5:shadowcolor=black@0.65:shadowx=2:shadowy=3:box=1:boxcolor=black@0.38:boxborderw=14:x=(w-text_w)/2:y=h-text_h-{mb}"
 
-# ── CONVERSOR ─────────────────────────────────
 @app.route("/converter", methods=["POST"])
 def converter():
     img_file      = request.files.get("imagem")
@@ -183,125 +160,85 @@ def converter():
     w_str, h_str = RESOLUTIONS.get(resolucao, ("1080", "1080"))
     w, h = int(w_str), int(h_str)
 
-    _EXT_IMG  = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
-    _EXT_AUD  = {".mp3", ".mp4", ".m4a", ".wav", ".webm", ".ogg", ".opus", ".oga", ".flac"}
+    _EXT_AUD = {".mp3",".mp4",".m4a",".wav",".webm",".ogg",".opus",".oga",".flac"}
 
-    img_path = aud_path = out_path = None
     try:
-        # Lê bytes em memória antes de criar arquivos
-        img_bytes = img_file.read()
-        aud_bytes = aud_file.read()
+        with tempfile.TemporaryDirectory() as tmp:
+            img_ext = os.path.splitext(img_file.filename or "img.jpg")[1].lower() or ".jpg"
+            aud_ext = os.path.splitext(aud_file.filename or "aud.mp3")[1].lower()
+            if aud_ext not in _EXT_AUD: aud_ext = ".mp3"
 
-        if not img_bytes:
-            return "Erro: imagem vazia.", 400
-        if not aud_bytes:
-            return "Erro: áudio vazio.", 400
+            img_path = os.path.join(tmp, "img" + img_ext)
+            aud_path = os.path.join(tmp, "aud" + aud_ext)
 
-        raw_img_ext = os.path.splitext(img_file.filename or "")[1].lower()
-        img_ext = raw_img_ext if raw_img_ext in _EXT_IMG else ".jpg"
-        raw_aud_ext = os.path.splitext(aud_file.filename or "")[1].lower()
-        aud_ext = raw_aud_ext if raw_aud_ext in _EXT_AUD else ".mp3"
+            # Salva usando write direto — método mais simples e confiável
+            with open(img_path, "wb") as f:
+                f.write(img_file.read())
+            with open(aud_path, "wb") as f:
+                f.write(aud_file.read())
 
-        # Salva em /tmp com fdopen para garantir escrita
-        img_fd, img_path = tempfile.mkstemp(suffix=img_ext, dir=TMP_DIR)
-        with os.fdopen(img_fd, "wb") as f:
-            f.write(img_bytes)
-        del img_bytes
+            fd, out_path = tempfile.mkstemp(suffix=".mp4")
+            os.close(fd)
 
-        aud_fd, aud_path = tempfile.mkstemp(suffix=aud_ext, dir=TMP_DIR)
-        with os.fdopen(aud_fd, "wb") as f:
-            f.write(aud_bytes)
-        del aud_bytes
+            scale_vf = f"scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:black"
+            vf       = scale_vf
+            ass_path = None
 
-        out_fd, out_path = tempfile.mkstemp(suffix=".mp4", dir=TMP_DIR)
-        os.close(out_fd)
+            if modo_leg == "auto":
+                dados_ass = None; modo_dados = "segmentos"
+                if palavras_json:
+                    try:
+                        p = json.loads(palavras_json)
+                        if p: dados_ass=p; modo_dados="palavras"
+                    except Exception: pass
+                if dados_ass is None and segs_json:
+                    try: dados_ass = json.loads(segs_json)
+                    except Exception: pass
+                if dados_ass:
+                    try:
+                        ass_path = os.path.join(tmp, "leg.ass")
+                        with open(ass_path, "w", encoding="utf-8") as f:
+                            f.write(gerar_ass(dados_ass, w, h, modo_dados))
+                        fonts_arg = f":fontsdir={FONTS_DIR}" if os.path.isdir(FONTS_DIR) else ""
+                        vf = f"{scale_vf},ass={ass_path}{fonts_arg}"
+                    except Exception:
+                        ass_path = None
 
-        # Diagnóstico: verifica arquivos antes do FFmpeg
-        img_size = os.path.getsize(img_path)
-        aud_size = os.path.getsize(aud_path)
-        img_readable = os.access(img_path, os.R_OK)
-        aud_readable = os.access(aud_path, os.R_OK)
-        if not img_readable or img_size == 0:
-            return f"Diagnóstico: img={img_path} size={img_size} readable={img_readable}", 500
-        if not aud_readable or aud_size == 0:
-            return f"Diagnóstico: aud={aud_path} size={aud_size} readable={aud_readable}", 500
+            if ass_path is None and modo_leg == "estatica" and legenda_txt:
+                vf = build_vf_estatico(w_str, h_str, legenda_txt)
 
-        # ── Filtro de vídeo ──
-        scale_vf = f"scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:black"
-        vf       = scale_vf
-        ass_path = None
+            cmd = [
+                "ffmpeg", "-y",
+                "-loop", "1",
+                "-i", img_path,
+                "-i", aud_path,
+                "-vf", vf,
+                "-map", "0:v", "-map", "1:a",
+                "-c:v", "libx264",
+                "-preset", "ultrafast",
+                "-tune", "stillimage",
+                "-crf", "35",
+                "-r", "2", "-g", "2",
+                "-pix_fmt", "yuv420p",
+                "-threads", CPU_CORES,
+                "-x264-params", "rc-lookahead=0:ref=1:bframes=0:weightp=0",
+                "-c:a", "aac", "-b:a", "96k", "-ar", "44100",
+                "-shortest", "-movflags", "+faststart",
+                out_path,
+            ]
 
-        if modo_leg == "auto":
-            dados_ass  = None
-            modo_dados = "segmentos"
-            if palavras_json:
-                try:
-                    p = json.loads(palavras_json)
-                    if p: dados_ass = p; modo_dados = "palavras"
-                except Exception: pass
-            if dados_ass is None and segs_json:
-                try: dados_ass = json.loads(segs_json)
-                except Exception: pass
-            if dados_ass:
-                try:
-                    ass_content = gerar_ass(dados_ass, w, h, modo_dados)
-                    ass_fd, ass_path = tempfile.mkstemp(suffix=".ass", dir=TMP_DIR)
-                    with os.fdopen(ass_fd, "w", encoding="utf-8") as f:
-                        f.write(ass_content)
-                    fonts_arg = f":fontsdir={FONTS_DIR}" if os.path.isdir(FONTS_DIR) else ""
-                    vf = f"{scale_vf},ass={ass_path}{fonts_arg}"
-                except Exception:
-                    ass_path = None
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=1200)
 
-        if ass_path is None and modo_leg == "estatica" and legenda_txt:
-            vf = build_vf_estatico(w_str, h_str, legenda_txt)
-
-        cmd = [
-            "ffmpeg", "-y",
-            "-loop", "1",
-            "-i", img_path,
-            "-i", aud_path,
-            "-vf", vf,
-            "-map", "0:v", "-map", "1:a",
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-tune", "stillimage",
-            "-crf", "35",
-            "-r", "2",
-            "-g", "2",
-            "-pix_fmt", "yuv420p",
-            "-threads", CPU_CORES,
-            "-x264-params", "rc-lookahead=0:ref=1:bframes=0:weightp=0",
-            "-c:a", "aac",
-            "-b:a", "96k",
-            "-ar", "44100",
-            "-shortest",
-            "-movflags", "+faststart",
-            out_path,
-        ]
-
-        # Grava stderr em arquivo para não estourar RAM
-        log_fd, log_path = tempfile.mkstemp(suffix=".log", dir=TMP_DIR)
-        os.close(log_fd)
-        try:
-            with open(log_path, "w") as log_f:
-                result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=log_f, timeout=1200)
-            if result.returncode != 0:
-                with open(log_path, "r", errors="replace") as lf:
-                    lines = lf.read().splitlines()
-                err_lines = [l for l in lines if any(k in l for k in ("Error","error","Invalid","failed","Cannot","moov","No such"))]
-                err_msg = "\n".join(err_lines[-20:]) if err_lines else "\n".join(lines[-20:])
-                return f"Erro FFmpeg:\n{err_msg}", 500
-        finally:
-            try: os.unlink(log_path)
-            except Exception: pass
+        if result.returncode != 0:
+            # Filtra linhas relevantes do erro
+            lines = result.stderr.splitlines()
+            err = [l for l in lines if any(k in l for k in ("Error","error","Invalid","failed","Cannot","No such"))]
+            return f"Erro FFmpeg:\n{chr(10).join(err[-15:]) or result.stderr[-1000:]}", 500
 
         @after_this_request
         def _cleanup(response):
-            for p in [out_path, img_path, aud_path, ass_path]:
-                if p:
-                    try: os.unlink(p)
-                    except Exception: pass
+            try: os.unlink(out_path)
+            except Exception: pass
             return response
 
         return send_file(out_path, mimetype="video/mp4", as_attachment=True, download_name="tron_clipe.mp4")
