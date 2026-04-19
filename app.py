@@ -28,6 +28,21 @@ RESOLUTIONS = {
     "1280x720":  ("1280", "720"),
 }
 
+# --- FUNÇÕES DE AUXÍLIO PARA FFmpeg ---
+
+def _esc_path(p):
+    """Escapa caminhos para filtros do FFmpeg (importante para Windows/Render)"""
+    return p.replace("\\", "/").replace(":", "\\:")
+
+def _esc(txt):
+    return txt.replace("\\","\\\\").replace("'","\\'").replace(":","\\:").replace("[","\\[").replace("]","\\]").replace(",","\\,")
+
+def _ts_ass(s):
+    h=int(s//3600); m=int((s%3600)//60); sc=int(s%60); cs=int(round((s-int(s))*100))
+    return f"{h}:{m:02d}:{sc:02d}.{cs:02d}"
+
+# --- ROTAS E LÓGICA ---
+
 @app.route("/")
 def index():
     return open(os.path.join(BASE_DIR, "index.html"), encoding="utf-8").read()
@@ -96,10 +111,6 @@ def transcrever():
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 
-def _ts_ass(s):
-    h=int(s//3600); m=int((s%3600)//60); sc=int(s%60); cs=int(round((s-int(s))*100))
-    return f"{h}:{m:02d}:{sc:02d}.{cs:02d}"
-
 def gerar_ass(dados, w, h, modo_dados="segmentos"):
     font_size = int(w * 0.074)
     margin_v  = int(h * 0.08)
@@ -133,14 +144,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             lines.append(f"Dialogue: 0,{_ts_ass(seg['start'])},{_ts_ass(seg['end'])},Tron,,0,0,0,,{txt}")
     return header + "\n".join(lines)
 
-def _esc(txt):
-    return txt.replace("\\","\\\\").replace("'","\\'").replace(":","\\:").replace("[","\\[").replace("]","\\]").replace(",","\\,")
-
 def build_vf_estatico(w, h, legenda):
     scale=f"scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:black"
     if not legenda.strip(): return scale
     txt=_esc(legenda.strip())
-    font=f"fontfile={FONT_PATH}" if os.path.exists(FONT_PATH) else "font=Impact"
+    
+    fpath_esc = _esc_path(FONT_PATH)
+    font=f"fontfile='{fpath_esc}'" if os.path.exists(FONT_PATH) else "font=Impact"
+    
     fs=int(int(w)*0.072); mb=int(int(h)*0.06)
     return f"{scale},drawtext={font}:text='{txt}':fontcolor=white:fontsize={fs}:bordercolor=black:borderw=5:shadowcolor=black@0.65:shadowx=2:shadowy=3:box=1:boxcolor=black@0.38:boxborderw=14:x=(w-text_w)/2:y=h-text_h-{mb}"
 
@@ -171,7 +182,6 @@ def converter():
             img_path = os.path.join(tmp, "img" + img_ext)
             aud_path = os.path.join(tmp, "aud" + aud_ext)
 
-            # Salva usando write direto — método mais simples e confiável
             with open(img_path, "wb") as f:
                 f.write(img_file.read())
             with open(aud_path, "wb") as f:
@@ -199,8 +209,12 @@ def converter():
                         ass_path = os.path.join(tmp, "leg.ass")
                         with open(ass_path, "w", encoding="utf-8") as f:
                             f.write(gerar_ass(dados_ass, w, h, modo_dados))
-                        fonts_arg = f":fontsdir={FONTS_DIR}" if os.path.isdir(FONTS_DIR) else ""
-                        vf = f"{scale_vf},ass={ass_path}{fonts_arg}"
+                        
+                        ass_path_esc = _esc_path(ass_path)
+                        fdir_esc     = _esc_path(FONTS_DIR)
+                        
+                        fonts_arg = f":fontsdir='{fdir_esc}'" if os.path.isdir(FONTS_DIR) else ""
+                        vf = f"{scale_vf},ass='{ass_path_esc}'{fonts_arg}"
                     except Exception:
                         ass_path = None
 
@@ -218,10 +232,12 @@ def converter():
                 "-preset", "ultrafast",
                 "-tune", "stillimage",
                 "-crf", "35",
-                "-r", "2", "-g", "2",
+                # OTIMIZAÇÃO EXTREMA DE VELOCIDADE
+                "-r", "1", 
+                "-g", "1", 
                 "-pix_fmt", "yuv420p",
-                "-threads", CPU_CORES,
-                "-x264-params", "rc-lookahead=0:ref=1:bframes=0:weightp=0",
+                "-threads", CPU_CORES, 
+                "-x264-params", "rc-lookahead=0:ref=1:bframes=0:weightp=0:subme=0:me=dia",
                 "-c:a", "aac", "-b:a", "96k", "-ar", "44100",
                 "-shortest", "-movflags", "+faststart",
                 out_path,
@@ -230,7 +246,6 @@ def converter():
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=1200)
 
         if result.returncode != 0:
-            # Filtra linhas relevantes do erro
             lines = result.stderr.splitlines()
             err = [l for l in lines if any(k in l for k in ("Error","error","Invalid","failed","Cannot","No such"))]
             return f"Erro FFmpeg:\n{chr(10).join(err[-15:]) or result.stderr[-1000:]}", 500
@@ -248,9 +263,7 @@ def converter():
     except Exception:
         return f"Erro interno:\n{traceback.format_exc()}", 500
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+# --- ROTAS DE SAÚDE E ERRO ---
 
 @app.route("/healthz")
 def healthz():
@@ -259,3 +272,7 @@ def healthz():
 @app.errorhandler(Exception)
 def handle_exception(e):
     return f"<pre>{traceback.format_exc()}</pre>", 500
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
