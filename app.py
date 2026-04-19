@@ -8,6 +8,8 @@ app.config["MAX_CONTENT_LENGTH"] = 300 * 1024 * 1024
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 CPU_CORES    = str(multiprocessing.cpu_count())
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
+TMP_DIR      = os.path.join(BASE_DIR, "tmp_work")
+os.makedirs(TMP_DIR, exist_ok=True)
 FONTS_DIR    = os.path.join(BASE_DIR, "fonts")
 os.makedirs(FONTS_DIR, exist_ok=True)
 
@@ -201,17 +203,17 @@ def converter():
         aud_ext = raw_aud_ext if raw_aud_ext in _EXT_AUD else ".mp3"
 
         # Salva em /tmp com fdopen para garantir escrita
-        img_fd, img_path = tempfile.mkstemp(suffix=img_ext, dir="/tmp")
+        img_fd, img_path = tempfile.mkstemp(suffix=img_ext, dir=TMP_DIR)
         with os.fdopen(img_fd, "wb") as f:
             f.write(img_bytes)
         del img_bytes
 
-        aud_fd, aud_path = tempfile.mkstemp(suffix=aud_ext, dir="/tmp")
+        aud_fd, aud_path = tempfile.mkstemp(suffix=aud_ext, dir=TMP_DIR)
         with os.fdopen(aud_fd, "wb") as f:
             f.write(aud_bytes)
         del aud_bytes
 
-        out_fd, out_path = tempfile.mkstemp(suffix=".mp4", dir="/tmp")
+        out_fd, out_path = tempfile.mkstemp(suffix=".mp4", dir=TMP_DIR)
         os.close(out_fd)
 
         # ── Filtro de vídeo ──
@@ -233,7 +235,7 @@ def converter():
             if dados_ass:
                 try:
                     ass_content = gerar_ass(dados_ass, w, h, modo_dados)
-                    ass_fd, ass_path = tempfile.mkstemp(suffix=".ass", dir="/tmp")
+                    ass_fd, ass_path = tempfile.mkstemp(suffix=".ass", dir=TMP_DIR)
                     with os.fdopen(ass_fd, "w", encoding="utf-8") as f:
                         f.write(ass_content)
                     fonts_arg = f":fontsdir={FONTS_DIR}" if os.path.isdir(FONTS_DIR) else ""
@@ -269,7 +271,7 @@ def converter():
         ]
 
         # Grava stderr em arquivo para não estourar RAM
-        log_fd, log_path = tempfile.mkstemp(suffix=".log", dir="/tmp")
+        log_fd, log_path = tempfile.mkstemp(suffix=".log", dir=TMP_DIR)
         os.close(log_fd)
         try:
             with open(log_path, "w") as log_f:
@@ -310,3 +312,4 @@ def healthz():
 @app.errorhandler(Exception)
 def handle_exception(e):
     return f"<pre>{traceback.format_exc()}</pre>", 500
+    
