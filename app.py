@@ -216,6 +216,16 @@ def converter():
         out_fd, out_path = tempfile.mkstemp(suffix=".mp4", dir=TMP_DIR)
         os.close(out_fd)
 
+        # Diagnóstico: verifica arquivos antes do FFmpeg
+        img_size = os.path.getsize(img_path)
+        aud_size = os.path.getsize(aud_path)
+        img_readable = os.access(img_path, os.R_OK)
+        aud_readable = os.access(aud_path, os.R_OK)
+        if not img_readable or img_size == 0:
+            return f"Diagnóstico: img={img_path} size={img_size} readable={img_readable}", 500
+        if not aud_readable or aud_size == 0:
+            return f"Diagnóstico: aud={aud_path} size={aud_size} readable={aud_readable}", 500
+
         # ── Filtro de vídeo ──
         scale_vf = f"scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:black"
         vf       = scale_vf
@@ -312,4 +322,4 @@ def healthz():
 @app.errorhandler(Exception)
 def handle_exception(e):
     return f"<pre>{traceback.format_exc()}</pre>", 500
-    
+            
