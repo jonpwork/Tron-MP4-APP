@@ -6,7 +6,6 @@ app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 300 * 1024 * 1024
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-CPU_CORES    = str(multiprocessing.cpu_count())
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 FONTS_DIR    = os.path.join(BASE_DIR, "fonts")
 os.makedirs(FONTS_DIR, exist_ok=True)
@@ -232,12 +231,12 @@ def converter():
                 "-preset", "ultrafast",
                 "-tune", "stillimage",
                 "-crf", "35",
-                # OTIMIZAÇÃO EXTREMA DE VELOCIDADE
-                "-r", "1", 
-                "-g", "1", 
+                # Configuração Segura e Otimizada
+                "-r", "2", 
+                "-g", "2", 
                 "-pix_fmt", "yuv420p",
-                "-threads", CPU_CORES, 
-                "-x264-params", "rc-lookahead=0:ref=1:bframes=0:weightp=0:subme=0:me=dia",
+                "-threads", "2",  # MÁGICA DE VELOCIDADE: Limita as threads para não travar o contêiner do Render
+                "-x264-params", "rc-lookahead=0:ref=1:bframes=0:weightp=0",
                 "-c:a", "aac", "-b:a", "96k", "-ar", "44100",
                 "-shortest", "-movflags", "+faststart",
                 out_path,
@@ -276,3 +275,4 @@ def handle_exception(e):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+    
