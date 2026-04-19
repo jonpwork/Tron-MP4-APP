@@ -1,4 +1,0 @@
-flask
-werkzeug
-gunicorn
-requests
