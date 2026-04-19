@@ -375,8 +375,12 @@ def converter():
                     )
                 if result.returncode != 0:
                     with open(log_path, "r", errors="replace") as lf:
-                        err_tail = lf.read()[-2000:]
-                    return f"Erro FFmpeg:\n{err_tail}", 500
+                        log_full = lf.read()
+                    # Pega as últimas linhas que contêm "Error" ou o final do log
+                    lines = log_full.splitlines()
+                    err_lines = [l for l in lines if any(k in l for k in ("Error","error","Invalid","No such","failed","Cannot","moov","muxer"))]
+                    err_summary = "\n".join(err_lines[-30:]) if err_lines else "\n".join(lines[-30:])
+                    return f"Erro FFmpeg:\n{err_summary}", 500
             finally:
                 try: os.unlink(log_path)
                 except Exception: pass
@@ -407,4 +411,4 @@ def healthz():
 @app.errorhandler(Exception)
 def handle_exception(e):
     return f"<pre>{traceback.format_exc()}</pre>", 500
-                
+        
