@@ -272,14 +272,22 @@ def converter():
                  ".ogg", ".opus", ".oga", ".flac"}
 
     try:
-        with tempfile.TemporaryDirectory() as tmp:
-            img_ext  = os.path.splitext(img_file.filename)[1] or ".jpg"
-            raw_ext  = os.path.splitext(aud_file.filename)[1].lower()
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            # Garante extensão válida para imagem
+            raw_img_ext = os.path.splitext(img_file.filename or "")[1].lower()
+            img_ext = raw_img_ext if raw_img_ext in {".jpg", ".jpeg", ".png", ".webp", ".bmp"} else ".jpg"
+            raw_ext  = os.path.splitext(aud_file.filename or "")[1].lower()
             aud_ext  = raw_ext if raw_ext in _EXT_SAFE else ".mp3"
             img_path = os.path.join(tmp, "img" + img_ext)
             aud_path = os.path.join(tmp, "aud" + aud_ext)
             img_file.save(img_path)
             aud_file.save(aud_path)
+
+            # Verifica se os arquivos foram salvos corretamente
+            if not os.path.exists(img_path) or os.path.getsize(img_path) == 0:
+                return "Erro: imagem não foi recebida corretamente.", 400
+            if not os.path.exists(aud_path) or os.path.getsize(aud_path) == 0:
+                return "Erro: áudio não foi recebido corretamente.", 400
 
             fd, out_path = tempfile.mkstemp(suffix=".mp4")
             os.close(fd)
@@ -411,4 +419,4 @@ def healthz():
 @app.errorhandler(Exception)
 def handle_exception(e):
     return f"<pre>{traceback.format_exc()}</pre>", 500
-        
+              
