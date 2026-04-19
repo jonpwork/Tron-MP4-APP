@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tron Conversor MP4 — Emc³</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@300;400;500;700&family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* ── TOKENS ──────────────────────────────── */
+        :root {
+            --bg:        #070a10;
+            --surface:   #0d1421;
+            --surface2:  #111c2e;
+            --border:    #1a2d47;
+            --cyan:      #00e5ff;
+            --purple:    #c026d3;
+            --green:     #00e676;
+            --red:       #ff1744;
+            --gold:      #f59e0b;
+            --gold2:     #fbbf24;
+            --gold-dim:  rgba(245,158,11,.12);
+            --text:      #dce8f5;
+            --muted:     #4a6880;
+            --font-main: 'Space Grotesk', sans-serif;
+            --font-head: 'Anton', sans-serif;
+            --font-myst: 'Cinzel', serif;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 28px 16px 80px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Grade neon */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(0,229,255,.022) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,229,255,.022) 1px, transparent 1px);
+            background-size: 44px 44px;
+            pointer-events: none; z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: -20%; left: 50%;
+            transform: translateX(-50%);
+            width: 600px; height: 400px;
+            background: radial-gradient(ellipse, rgba(0,229,255,.06) 0%, transparent 70%);
+            pointer-events: none; z-index: 0;
+        }
+
+        .wrapper {
+            position: relative; z-index: 1;
+            width: 100%; max-width: 480px;
+            display: flex; flex-direction: column; gap: 20px;
+        }
+
+        /* ── HEADER ──────────────────────────────── */
+        header { text-align: center; padding: 8px 0 4px; }
+
+        .logo-img {
+            width: 90px;
+            filter: drop-shadow(0 0 16px var(--cyan));
+            margin-bottom: 14px;
+        }
+
+        .logo-title {
+            font-family: var(--font-head);
+            font-size: 38px; letter-spacing: 5px;
+            background: linear-gradient(90deg, var(--cyan) 30%, var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+
+        .logo-sub {
+            font-size: 10px; letter-spacing: 5px;
+            text-transform: uppercase; color: var(--muted); margin-top: 5px;
+        }
+
+        .led-bar {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(0,229,255,.04);
+            border: 1px solid var(--border);
+            border-radius: 99px; padding: 4px 14px; margin-top: 12px;
+        }
+
+        .led {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--cyan); box-shadow: 0 0 8px var(--cyan);
+            animation: blink 2.4s infinite;
+        }
+
+        .led.active {
+            background: var(--green); box-shadow: 0 0 12px var(--green);
+            animation: blink-fast .5s infinite;
+        }
+
+        .led-text { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+
+        @keyframes blink      { 0%,100%{opacity:.4} 50%{opacity:1} }
+        @keyframes blink-fast { 0%,100%{opacity:.7} 50%{opacity:1} }
+
+        /* ── CARD ────────────────────────────────── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px; padding: 28px 24px;
+            box-shadow: 0 0 40px rgba(0,229,255,.04), 0 24px 48px rgba(0,0,0,.5);
+        }
+
+        .section-tag {
+            font-size: 9px; font-weight: 700; letter-spacing: 3px;
+            text-transform: uppercase; color: var(--cyan); margin-bottom: 10px;
+        }
+
+        /* ── DROP ZONES ──────────────────────────── */
+        .drop-zone {
+            position: relative; border: 1.5px dashed var(--border);
+            border-radius: 12px; padding: 18px 14px; text-align: center;
+            cursor: pointer; transition: border-color .2s, background .2s;
+            margin-bottom: 16px;
+        }
+
+        .drop-zone:hover, .drop-zone.over {
+            border-color: var(--cyan); background: rgba(0,229,255,.04);
+        }
+
+        .drop-zone input[type="file"] {
+            position: absolute; inset: 0; opacity: 0;
+            cursor: pointer; width: 100%; height: 100%;
+        }
+
+        .drop-icon  { font-size: 26px; margin-bottom: 4px; }
+        .drop-title { font-weight: 700; font-size: 13px; }
+        .drop-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+        .drop-name  { font-size: 11px; color: var(--green); margin-top: 5px; font-weight: 600; }
+
+        /* ── RESOLUTION ──────────────────────────── */
+        .res-grid {
+            display: grid; grid-template-columns: repeat(3,1fr);
+            gap: 8px; margin-bottom: 20px;
+        }
+
+        .res-btn {
+            background: transparent; border: 1.5px solid var(--border);
+            border-radius: 10px; padding: 10px 4px; color: var(--muted);
+            font-family: var(--font-main); font-size: 11px; font-weight: 700;
+            cursor: pointer; transition: all .2s; text-align: center; line-height: 1.4;
+        }
+
+        .res-btn:hover  { border-color: var(--cyan); color: var(--cyan); }
+        .res-btn.active { border-color: var(--cyan); background: rgba(0,229,255,.07); color: var(--cyan); }
+        .res-icon       { font-size: 18px; display: block; margin-bottom: 3px; }
+
+        hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+        textarea {
+            width: 100%; background: var(--bg);
+            border: 1.5px solid var(--border); border-radius: 10px;
+            color: var(--text); font-family: var(--font-main); font-size: 13px;
+            padding: 12px 14px; resize: vertical; min-height: 72px;
+            outline: none; transition: border-color .2s;
+        }
+
+        textarea:focus { border-color: var(--cyan); }
+        textarea::placeholder { color: var(--muted); }
+
+        .btn-whisper {
+            display: flex; align-items: center; justify-content: center;
+            gap: 6px; flex-wrap: wrap;
+            background: transparent; border: 1.5px solid var(--purple);
+            border-radius: 10px; color: var(--purple);
+            font-family: var(--font-main); font-size: 11px; font-weight: 700;
+            letter-spacing: .5px; text-transform: uppercase;
+            padding: 12px 16px; width: 100%;
+            cursor: pointer; text-align: center;
+            white-space: normal; line-height: 1.4;
+            transition: all .2s;
+        }
+
+        .btn-whisper:hover:not(:disabled) { background: rgba(192,38,211,.1); }
+        .btn-whisper:disabled { opacity: .4; cursor: not-allowed; }
+
+        /* ── BOTÃO PRINCIPAL ─────────────────────── */
+        .btn-main {
+            width: 100%; padding: 17px; border: none; border-radius: 12px;
+            background: linear-gradient(90deg, var(--cyan), #0084b4);
+            color: #000; font-family: var(--font-head); font-size: 20px;
+            letter-spacing: 3px; cursor: pointer; transition: all .25s;
+        }
+
+        .btn-main:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px rgba(0,229,255,.35);
+        }
+
+        .btn-main:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+        /* ── PROGRESS ────────────────────────────── */
+        .progress-wrap { display: none; margin-top: 18px; }
+        .progress-wrap.on { display: block; }
+
+        .progress-track {
+            background: var(--border); border-radius: 99px; height: 3px; overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%; border-radius: 99px;
+            background: linear-gradient(90deg, var(--cyan), var(--purple));
+            width: 0%; transition: width .5s ease; animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer { 0%,100%{opacity:1} 50%{opacity:.5} }
+        .progress-lbl { font-size: 11px; color: var(--muted); text-align: center; margin-top: 7px; }
+
+        /* ── PAINEL TRANSCRIÇÃO ──────────────────── */
+        .transcription-panel {
+            display: none; background: var(--surface2);
+            border: 1px solid var(--border); border-radius: 16px; padding: 20px;
+        }
+
+        .transcription-panel.visible { display: block; }
+
+        .panel-header {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 14px;
+        }
+
+        .panel-title {
+            font-size: 10px; font-weight: 700; letter-spacing: 3px;
+            text-transform: uppercase; color: var(--purple);
+        }
+
+        .panel-actions { display: flex; gap: 8px; }
+
+        .panel-btn {
+            display: flex; align-items: center; gap: 5px;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 8px; color: var(--text); font-family: var(--font-main);
+            font-size: 11px; font-weight: 600; padding: 6px 12px;
+            cursor: pointer; transition: all .2s;
+        }
+
+        .panel-btn:hover  { border-color: var(--cyan); color: var(--cyan); }
+        .panel-btn.copied { border-color: var(--green); color: var(--green); }
+
+        #transcription-text {
+            font-size: 13px; line-height: 1.7; color: var(--text);
+            white-space: pre-wrap; word-break: break-word;
+            max-height: 260px; overflow-y: auto; padding-right: 4px;
+        }
+
+        #transcription-text::-webkit-scrollbar { width: 4px; }
+        #transcription-text::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+        .btn-use-caption {
+            width: 100%; margin-top: 14px; padding: 10px;
+            background: transparent; border: 1.5px dashed var(--cyan);
+            border-radius: 10px; color: var(--cyan); font-family: var(--font-main);
+            font-size: 12px; font-weight: 700; cursor: pointer;
+            transition: all .2s; letter-spacing: 1px;
+        }
+
+        .btn-use-caption:hover { background: rgba(0,229,255,.07); }
+
+        .badge-palavras {
+            display: inline-block;
+            background: rgba(0,229,255,.12); border: 1px solid var(--cyan);
+            border-radius: 99px; font-size: 9px; font-weight: 700;
+            letter-spacing: 1px; color: var(--cyan); padding: 2px 10px;
+            margin-left: 8px; vertical-align: middle;
+        }
+
+        /* ── TOAST ───────────────────────────────── */
+        #toast {
+            position: fixed; bottom: 24px; left: 50%;
+            transform: translateX(-50%) translateY(16px);
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; padding: 11px 22px;
+            font-size: 12px; font-weight: 600; opacity: 0;
+            transition: all .3s; pointer-events: none; z-index: 999; white-space: nowrap;
+        }
+
+        #toast.show    { opacity: 1; transform: translateX(-50%) translateY(0); }
+        #toast.success { border-color: var(--green); color: var(--green); }
+        #toast.error   { border-color: var(--red);   color: var(--red); }
+        #toast.info    { border-color: var(--cyan);  color: var(--cyan); }
+
+        /* ── FOOTER CONVERSOR ────────────────────── */
+        .conv-footer {
+            text-align: center; font-size: 10px; color: var(--muted);
+            letter-spacing: 2px; margin-top: 8px;
+        }
+
+        .conv-footer span { color: var(--cyan); }
+
+        .logout-link {
+            display: block; text-align: center; font-size: 10px;
+            color: var(--muted); text-decoration: none; letter-spacing: 2px;
+            text-transform: uppercase; margin-top: 4px; transition: color .2s;
+        }
+
+        .logout-link:hover { color: var(--red); }
+
+        /* ── MINI PLAYER ─────────────────────────── */
+        .mini-player {
+            position: fixed; bottom: 16px; left: 50%;
+            transform: translateX(-50%);
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(13,20,33,.92);
+            border: 1px solid var(--border);
+            border-radius: 99px;
+            padding: 8px 16px 8px 10px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 4px 24px rgba(0,0,0,.5);
+            z-index: 200;
+            transition: opacity .3s, transform .3s;
+            max-width: calc(100vw - 32px);
+        }
+
+        .mini-player.hidden {
+            opacity: 0; transform: translateX(-50%) translateY(60px);
+            pointer-events: none;
+        }
+
+        .mp-play-btn {
+            width: 32px; height: 32px; flex-shrink: 0;
+            border-radius: 50%; border: none;
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: transform .15s, box-shadow .15s;
+            box-shadow: 0 0 12px rgba(0,229,255,.25);
+        }
+
+        .mp-play-btn:hover { transform: scale(1.1); box-shadow: 0 0 18px rgba(0,229,255,.4); }
+        .mp-play-btn svg { width: 13px; height: 13px; fill: #000; }
+
+        .mp-info { display: flex; flex-direction: column; min-width: 0; }
+
+        .mp-title {
+            font-size: 10px; font-weight: 700; color: var(--text);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            max-width: 140px;
+        }
+
+        .mp-bar-wrap {
+            width: 100px; height: 3px;
+            background: var(--border); border-radius: 99px; overflow: hidden;
+            cursor: pointer; margin-top: 4px;
+        }
+
+        .mp-bar-fill {
+            height: 100%; border-radius: 99px;
+            background: linear-gradient(90deg, var(--cyan), var(--purple));
+            width: 0%; transition: width .5s linear;
+        }
+
+        .mp-close {
+            background: none; border: none; color: var(--muted);
+            font-size: 16px; cursor: pointer; padding: 0 0 0 4px;
+            line-height: 1; flex-shrink: 0; transition: color .2s;
+        }
+
+        .mp-close:hover { color: var(--red); }
+
+        .mp-note { font-size: 13px; flex-shrink: 0; }
+        @keyframes pulse-note { 0%,100%{opacity:.5;transform:scale(1)} 50%{opacity:1;transform:scale(1.15)} }
+        .mp-note.playing { animation: pulse-note 1s ease-in-out infinite; }
+
+        /* ══════════════════════════════════════════
+           PÁGINA DE VENDAS — ESTILOS MÍSTICOS
+           ══════════════════════════════════════════ */
+
+        /* Separador mágico entre conversor e vitrine */
+        .sales-divider {
+            width: 100%; margin: 16px 0 28px;
+            display: flex; align-items: center; gap: 12px;
+        }
+
+        .sales-divider::before, .sales-divider::after {
+            content: '';
+            flex: 1; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+        }
+
+        .sales-divider-text {
+            font-family: var(--font-myst);
+            font-size: 9px; letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--gold);
+            white-space: nowrap;
+        }
+
+        /* Seção genérica de vendas */
+        .sales-section {
+            width: 100%; margin-bottom: 8px;
+        }
+
+        .sales-section-title {
+            font-family: var(--font-myst);
+            font-size: 11px; font-weight: 700;
+            letter-spacing: 4px; text-transform: uppercase;
+            color: var(--gold); margin-bottom: 14px;
+            text-align: center;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+
+        .sales-section-title::before,
+        .sales-section-title::after {
+            content: '✦';
+            font-size: 8px; opacity: .6;
+        }
+
+        /* ── EBOOKS GRID ─────────────────────────── */
+        .ebooks-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .ebook-card {
+            position: relative;
+            background: linear-gradient(135deg, #0d1421 0%, #111c2e 100%);
+            border: 1px solid rgba(245,158,11,.25);
+            border-radius: 16px;
+            padding: 20px 14px 16px;
+            text-decoration: none;
+            display: flex; flex-direction: column; align-items: center;
+            gap: 10px; overflow: hidden;
+            transition: transform .25s, border-color .25s, box-shadow .25s;
+            cursor: pointer;
+        }
+
+        .ebook-card::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: radial-gradient(ellipse at top, rgba(245,158,11,.08) 0%, transparent 65%);
+            pointer-events: none;
+        }
+
+        .ebook-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--gold);
+            box-shadow: 0 12px 32px rgba(245,158,11,.18), 0 0 0 1px rgba(245,158,11,.15);
+        }
+
+        .ebook-icon {
+            font-size: 36px;
+            filter: drop-shadow(0 0 10px rgba(245,158,11,.5));
+            animation: float-icon 4s ease-in-out infinite;
+        }
+
+        @keyframes float-icon {
+            0%, 100% { transform: translateY(0); }
+            50%       { transform: translateY(-5px); }
+        }
+
+        .ebook-card:nth-child(2) .ebook-icon { animation-delay: .8s; }
+        .ebook-card:nth-child(3) .ebook-icon { animation-delay: 1.6s; }
+        .ebook-card:nth-child(4) .ebook-icon { animation-delay: 2.4s; }
+
+        .ebook-title {
+            font-family: var(--font-myst);
+            font-size: 11px; font-weight: 700;
+            color: var(--gold2); text-align: center; line-height: 1.3;
+        }
+
+        .ebook-desc {
+            font-size: 9px; color: var(--muted);
+            text-align: center; line-height: 1.5;
+        }
+
+        .ebook-price {
+            font-family: var(--font-head);
+            font-size: 18px; letter-spacing: 1px;
+            color: var(--gold);
+        }
+
+        .ebook-badge {
+            position: absolute; top: 10px; right: 10px;
+            background: var(--gold);
+            color: #000; font-size: 7px; font-weight: 700;
+            letter-spacing: 1px; text-transform: uppercase;
+            padding: 2px 7px; border-radius: 99px;
+        }
+
+        .ebook-btn {
+            width: 100%; padding: 8px;
+            background: linear-gradient(90deg, rgba(245,158,11,.15), rgba(245,158,11,.08));
+            border: 1px solid rgba(245,158,11,.4);
+            border-radius: 8px; color: var(--gold2);
+            font-family: var(--font-main); font-size: 10px; font-weight: 700;
+            letter-spacing: 1px; text-transform: uppercase;
+            cursor: pointer; transition: all .2s; text-align: center;
+            text-decoration: none; display: block;
+        }
+
+        .ebook-btn:hover {
+            background: linear-gradient(90deg, rgba(245,158,11,.28), rgba(245,158,11,.14));
+            border-color: var(--gold);
+        }
+
+        /* ── SERVIÇOS MÍSTICOS ───────────────────── */
+        .servicos-list {
+            display: flex; flex-direction: column; gap: 10px;
+        }
+
+        .servico-card {
+            position: relative;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px 18px;
+            display: flex; align-items: center; gap: 14px;
+            text-decoration: none;
+            transition: all .22s; overflow: hidden;
+            cursor: pointer;
+        }
+
+        .servico-card::after {
+            content: '';
+            position: absolute; left: 0; top: 0; bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--purple), var(--cyan));
+            border-radius: 3px 0 0 3px;
+        }
+
+        .servico-card:hover {
+            border-color: var(--purple);
+            background: var(--surface2);
+            transform: translateX(4px);
+            box-shadow: 0 8px 24px rgba(192,38,211,.12);
+        }
+
+        .servico-icon {
+            font-size: 28px; flex-shrink: 0;
+            filter: drop-shadow(0 0 8px rgba(192,38,211,.5));
+        }
+
+        .servico-info { flex: 1; }
+
+        .servico-name {
+            font-family: var(--font-myst);
+            font-size: 12px; font-weight: 700;
+            color: var(--text); margin-bottom: 3px;
+        }
+
+        .servico-desc { font-size: 10px; color: var(--muted); line-height: 1.4; }
+
+        .servico-arrow {
+            color: var(--purple); font-size: 16px; opacity: .7;
+            transition: transform .2s;
+        }
+
+        .servico-card:hover .servico-arrow { transform: translateX(4px); opacity: 1; }
+
+        /* ── BOTÕES GRANDES DE CTA ───────────────── */
+        .cta-card {
+            position: relative;
+            border-radius: 18px; overflow: hidden;
+            text-decoration: none; display: block;
+            transition: transform .25s, box-shadow .25s;
+        }
+
+        .cta-card:hover { transform: translateY(-3px); }
+
+        .cta-whatsapp {
+            background: linear-gradient(135deg, #0a2016 0%, #051a10 100%);
+            border: 1px solid rgba(37,211,102,.3);
+            padding: 22px 20px;
+            display: flex; align-items: center; gap: 16px;
+        }
+
+        .cta-whatsapp:hover {
+            box-shadow: 0 14px 40px rgba(37,211,102,.2);
+            border-color: rgba(37,211,102,.6);
+        }
+
+        .cta-tiktok {
+            background: linear-gradient(135deg, #0a0a1a 0%, #100010 100%);
+            border: 1px solid rgba(254,44,85,.3);
+            padding: 22px 20px;
+            display: flex; align-items: center; gap: 16px;
+        }
+
+        .cta-tiktok:hover {
+            box-shadow: 0 14px 40px rgba(254,44,85,.2);
+            border-color: rgba(254,44,85,.6);
+        }
+
+        .cta-icon-wrap {
+            width: 52px; height: 52px; flex-shrink: 0;
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 26px;
+        }
+
+        .cta-whatsapp .cta-icon-wrap {
+            background: rgba(37,211,102,.12);
+            box-shadow: 0 0 20px rgba(37,211,102,.2);
+        }
+
+        .cta-tiktok .cta-icon-wrap {
+            background: rgba(254,44,85,.12);
+            box-shadow: 0 0 20px rgba(254,44,85,.2);
+        }
+
+        .cta-body { flex: 1; }
+
+        .cta-label {
+            font-size: 8px; letter-spacing: 3px; font-weight: 700;
+            text-transform: uppercase; margin-bottom: 5px;
+        }
+
+        .cta-whatsapp .cta-label { color: #25d366; }
+        .cta-tiktok  .cta-label { color: #fe2c55; }
+
+        .cta-title {
+            font-family: var(--font-myst);
+            font-size: 15px; font-weight: 700;
+            color: var(--text); margin-bottom: 4px;
+        }
+
+        .cta-sub { font-size: 10px; color: var(--muted); }
+
+        .cta-chevron {
+            font-size: 20px; opacity: .5;
+            transition: transform .2s, opacity .2s;
+        }
+
+        .cta-card:hover .cta-chevron { transform: translateX(5px); opacity: 1; }
+
+        /* ── DEPOIMENTOS ─────────────────────────── */
+        .depo-scroll {
+            display: flex; gap: 12px;
+            overflow-x: auto; padding-bottom: 8px;
+            scrollbar-width: none;
+        }
+
+        .depo-scroll::-webkit-scrollbar { display: none; }
+
+        .depo-card {
+            flex-shrink: 0; width: 220px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px; padding: 16px;
+        }
+
+        .depo-stars {
+            color: var(--gold); font-size: 11px; margin-bottom: 8px;
+            letter-spacing: 2px;
+        }
+
+        .depo-text {
+            font-size: 11px; color: var(--text); line-height: 1.6;
+            font-style: italic; margin-bottom: 12px;
+        }
+
+        .depo-author {
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        .depo-avatar {
+            width: 28px; height: 28px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--purple), var(--cyan));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0;
+        }
+
+        .depo-name {
+            font-size: 10px; font-weight: 700; color: var(--muted);
+            letter-spacing: 1px;
+        }
+
+        /* ── ATENDIMENTO ─────────────────────────── */
+        .atend-card {
+            background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
+            border: 1px solid var(--border);
+            border-radius: 18px; padding: 24px 20px;
+            text-align: center;
+        }
+
+        .atend-icon { font-size: 36px; margin-bottom: 12px; }
+
+        .atend-title {
+            font-family: var(--font-myst);
+            font-size: 14px; font-weight: 700;
+            color: var(--text); margin-bottom: 6px;
+        }
+
+        .atend-sub { font-size: 11px; color: var(--muted); line-height: 1.6; margin-bottom: 18px; }
+
+        .atend-btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: linear-gradient(90deg, #25d366, #128c4a);
+            border: none; border-radius: 10px;
+            color: #fff; font-family: var(--font-main);
+            font-size: 13px; font-weight: 700;
+            padding: 12px 24px; cursor: pointer;
+            text-decoration: none; transition: all .22s;
+        }
+
+        .atend-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px rgba(37,211,102,.3);
+        }
+
+        /* ── FOOTER FINAL ────────────────────────── */
+        .page-footer {
+            text-align: center; padding: 28px 0 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .page-footer-logo {
+            font-family: var(--font-myst);
+            font-size: 18px; font-weight: 900; letter-spacing: 3px;
+            background: linear-gradient(90deg, var(--gold), var(--gold2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .page-footer-sub {
+            font-size: 9px; letter-spacing: 3px;
+            text-transform: uppercase; color: var(--muted); margin-bottom: 16px;
+        }
+
+        .footer-links {
+            display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;
+        }
+
+        .footer-link {
+            font-size: 9px; letter-spacing: 2px;
+            text-transform: uppercase; color: var(--muted);
+            text-decoration: none; transition: color .2s;
+        }
+
+        .footer-link:hover { color: var(--cyan); }
+
+        /* ── COSMIC STARS BACKGROUND (SALES) ─────── */
+        .sales-cosmic {
+            position: relative;
+        }
+
+        .sales-cosmic::before {
+            content: '✦ ✧ ✦ ✧ ✦';
+            position: absolute; top: -18px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 8px; letter-spacing: 12px;
+            color: rgba(245,158,11,.2);
+            white-space: nowrap; pointer-events: none;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+    <!-- ═══════ HEADER ══════════════════════════ -->
+    <header>
+        <svg class="logo-img" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="38" cy="40" rx="28" ry="28" stroke="#00e5ff" stroke-width="3" fill="none"/>
+            <ellipse cx="82" cy="40" rx="28" ry="28" stroke="#00e5ff" stroke-width="3" fill="none"/>
+            <path d="M38 12 Q60 40 82 12" stroke="#00e5ff" stroke-width="3" fill="none"/>
+            <path d="M38 68 Q60 40 82 68" stroke="#00e5ff" stroke-width="3" fill="none"/>
+            <polyline points="22,40 26,30 30,50 34,35 38,40" stroke="#c026d3" stroke-width="2" fill="none"/>
+            <rect x="72" y="32" width="16" height="16" stroke="#c026d3" stroke-width="2" fill="none" rx="2"/>
+            <path d="M52 40 L68 40 M64 36 L68 40 L64 44" stroke="#00e5ff" stroke-width="2"/>
+        </svg>
+        <div class="logo-title">TRON</div>
+        <div class="logo-sub">Conversor MP4 · Emc³</div>
+        <div class="led-bar">
+            <div class="led" id="statusLed"></div>
+            <span class="led-text" id="ledText">Sistema Online</span>
+        </div>
+    </header>
+
+    <!-- ═══════ CARD CONVERSOR ══════════════════ -->
+    <div class="card">
+
+        <div class="section-tag">01 — Imagem de capa</div>
+        <div class="drop-zone" id="zoneImg">
+            <input type="file" id="inputImg" accept="image/*">
+            <div class="drop-icon">🖼️</div>
+            <div class="drop-title">Arraste ou toque para selecionar</div>
+            <div class="drop-sub">JPG · PNG · WEBP</div>
+            <div class="drop-name" id="nameImg"></div>
+        </div>
+
+        <div class="section-tag">02 — Áudio</div>
+        <div class="drop-zone" id="zoneAud">
+            <input type="file" id="inputAud" accept="audio/*,.ogg,.opus,.oga">
+            <div class="drop-icon">🎵</div>
+            <div class="drop-title">Arraste ou toque para selecionar</div>
+            <div class="drop-sub">MP3 · WAV · M4A · OGG · OPUS (WhatsApp) — até 300 MB</div>
+            <div class="drop-name" id="nameAud"></div>
+        </div>
+
+        <hr>
+
+        <div class="section-tag">03 — Resolução</div>
+        <div class="res-grid">
+            <button class="res-btn" data-res="720x1280" onclick="pickRes(this)">
+                <span class="res-icon">📱</span>720×1280<br>Story/Reels
+            </button>
+            <button class="res-btn active" data-res="1080x1080" onclick="pickRes(this)">
+                <span class="res-icon">⬛</span>1080×1080<br>Feed
+            </button>
+            <button class="res-btn" data-res="1280x720" onclick="pickRes(this)">
+                <span class="res-icon">🖥️</span>1280×720<br>YouTube
+            </button>
+        </div>
+
+        <hr>
+
+        <div class="section-tag">04 — Legenda no vídeo</div>
+
+        <div class="res-grid" style="margin-bottom:16px">
+            <button class="res-btn active" data-modo="nenhuma" onclick="pickModo(this)">
+                <span class="res-icon">🚫</span>Sem legenda
+            </button>
+            <button class="res-btn" data-modo="auto" onclick="pickModo(this)">
+                <span class="res-icon">🎙️</span>Auto<br><small>TikTok sync</small>
+            </button>
+            <button class="res-btn" data-modo="estatica" onclick="pickModo(this)">
+                <span class="res-icon">✏️</span>Manual<br><small>Texto fixo</small>
+            </button>
+        </div>
+
+        <div id="painelAuto" style="display:none">
+            <button class="btn-whisper" id="btnWhisper" onclick="transcrever()"
+                    style="width:100%;justify-content:center;padding:12px;margin-bottom:8px;font-size:12px">
+                🎙️ Transcrever e sincronizar legenda automaticamente
+            </button>
+            <div style="font-size:10px;min-height:16px;text-align:center;margin-bottom:8px;color:var(--muted)"
+                 id="whisperStatus"></div>
+        </div>
+
+        <div id="painelEstatica" style="display:none">
+            <textarea id="legendaInput" placeholder="Ex: Isso vai mudar sua vida pra sempre..."></textarea>
+            <div style="font-size:10px;color:var(--muted);margin-top:5px">Texto fixo aparece o tempo todo no rodapé</div>
+        </div>
+
+        <hr>
+
+        <button class="btn-main" id="btnConverter" onclick="converter()">GERAR VÍDEO</button>
+
+        <div class="progress-wrap" id="progressWrap">
+            <div class="progress-track">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-lbl" id="progressLbl">Processando...</div>
+        </div>
+
+    </div>
+
+    <!-- Painel transcrição -->
+    <div class="transcription-panel" id="transcriptionPanel">
+        <div class="panel-header">
+            <span class="panel-title">
+                📝 Transcrição
+                <span class="badge-palavras" id="badgePalavras" style="display:none"></span>
+            </span>
+            <div class="panel-actions">
+                <button class="panel-btn" id="btnCopy" onclick="copiarTexto()">📋 Copiar</button>
+                <button class="panel-btn" onclick="compartilharTexto()">🔗 Compartilhar</button>
+            </div>
+        </div>
+        <div id="transcription-text"></div>
+        <button class="btn-use-caption" onclick="usarComoLegenda()">
+            ↳ Usar como legenda estática no vídeo
+        </button>
+    </div>
+
+    <!-- Footer do conversor -->
+    <div class="conv-footer">
+        © 2025 <span>Emc³</span> · Dev: Jon Padilha · Todos os direitos reservados
+    </div>
+
+
+    <!-- ══════════════════════════════════════════
+         SEPARADOR → VITRINE / PÁGINA DE VENDAS
+         ══════════════════════════════════════════ -->
+
+    <div class="sales-divider">
+        <span class="sales-divider-text">✦ Nossa Vitrine ✦</span>
+    </div>
+
+
+    <!-- ══════════════════════════════════════════
+         SEÇÃO 1 — EBOOKS
+         ══════════════════════════════════════════ -->
+    <div class="sales-section sales-cosmic">
+        <div class="sales-section-title">E-Books Digitais</div>
+
+        <div class="ebooks-grid">
+
+            <!-- Ebook 1 — edite título, preço e href -->
+            <a href="LINK_DO_EBOOK_1" target="_blank" class="ebook-card">
+                <span class="ebook-badge">PDF</span>
+                <div class="ebook-icon">📖</div>
+                <div class="ebook-title">Numerologia Sagrada</div>
+                <div class="ebook-desc">Descubra o código oculto do seu nome e data de nascimento</div>
+                <div class="ebook-price">R$ 27</div>
+                <span class="ebook-btn">Quero agora</span>
+            </a>
+
+            <!-- Ebook 2 -->
+            <a href="LINK_DO_EBOOK_2" target="_blank" class="ebook-card">
+                <span class="ebook-badge">PDF</span>
+                <div class="ebook-icon">🌌</div>
+                <div class="ebook-title">Mapa Vibracional</div>
+                <div class="ebook-desc">Leia as energias do seu caminho com clareza e propósito</div>
+                <div class="ebook-price">R$ 37</div>
+                <span class="ebook-btn">Quero agora</span>
+            </a>
+
+            <!-- Ebook 3 -->
+            <a href="LINK_DO_EBOOK_3" target="_blank" class="ebook-card">
+                <span class="ebook-badge">PDF</span>
+                <div class="ebook-icon">🔮</div>
+                <div class="ebook-title">Código Atemporal</div>
+                <div class="ebook-desc">Sincronicidade, ciclos e a linguagem do universo</div>
+                <div class="ebook-price">R$ 47</div>
+                <span class="ebook-btn">Quero agora</span>
+            </a>
+
+            <!-- Ebook 4 -->
+            <a href="LINK_DO_EBOOK_4" target="_blank" class="ebook-card">
+                <div class="ebook-icon">⭐</div>
+                <div class="ebook-title">Kit Completo Emc³</div>
+                <div class="ebook-desc">Todos os e-books com desconto especial</div>
+                <div class="ebook-price">R$ 97</div>
+                <span class="ebook-btn" style="border-color:var(--gold);color:var(--gold)">Kit especial</span>
+            </a>
+
+        </div>
+    </div>
+
+
+    <!-- ══════════════════════════════════════════
+         SEÇÃO 2 — SERVIÇOS MÍSTICOS
+         ══════════════════════════════════════════ -->
+    <div class="sales-section">
+        <div class="sales-section-title">Consultas & Serviços</div>
+
+        <div class="servicos-list">
+
+            <!-- Serviço 1 — edite href -->
+            <a href="LINK_SERVICO_NUMEROLOGIA" target="_blank" class="servico-card">
+                <div class="servico-icon">🔢</div>
+                <div class="servico-info">
+                    <div class="servico-name">Numerologia Pessoal</div>
+                    <div class="servico-desc">Análise completa do seu número de vida, missão e expressão</div>
+                </div>
+                <div class="servico-arrow">›</div>
+            </a>
+
+            <!-- Serviço 2 -->
+            <a href="LINK_SERVICO_MAPA" target="_blank" class="servico-card">
+                <div class="servico-icon">🗺️</div>
+                <div class="servico-info">
+                    <div class="servico-name">Mapa Vibracional</div>
+                    <div class="servico-desc">Leitura personalizada das suas energias e ciclos de vida</div>
+                </div>
+                <div class="servico-arrow">›</div>
+            </a>
+
+            <!-- Serviço 3 -->
+            <a href="LINK_SERVICO_MENTORIA" target="_blank" class="servico-card">
+                <div class="servico-icon">🌙</div>
+                <div class="servico-info">
+                    <div class="servico-name">Mentoria Mística</div>
+                    <div class="servico-desc">Sessão 1:1 ao vivo para alinhamento espiritual e propósito</div>
+                </div>
+                <div class="servico-arrow">›</div>
+            </a>
+
+        </div>
+    </div>
+
+
+    <!-- ══════════════════════════════════════════
+         SEÇÃO 3 — CATÁLOGO WHATSAPP
+         ══════════════════════════════════════════ -->
+    <div class="sales-section">
+        <div class="sales-section-title">Catálogo Completo</div>
+
+        <!-- EDITE o href com seu link do catálogo WA -->
+        <a href="https://wa.me/c/5521964440418" target="_blank" class="cta-card cta-whatsapp">
+            <div class="cta-icon-wrap">🛍️</div>
+            <div class="cta-body">
+                <div class="cta-label">WhatsApp Business</div>
+                <div class="cta-title">Ver Catálogo Completo</div>
+                <div class="cta-sub">Todos os produtos e serviços disponíveis</div>
+            </div>
+            <div class="cta-chevron">›</div>
+        </a>
+    </div>
+
+
+    <!-- ══════════════════════════════════════════
+         SEÇÃO 4 — TIKTOK VITRINE
+         ══════════════════════════════════════════ -->
+    <div class="sales-section">
+        <div class="sales-section-title">Vitrine TikTok</div>
+
+        <!-- EDITE o href com seu perfil TikTok -->
+        <a href="https://www.tiktok.com/@emc3oficial" target="_blank" class="cta-card cta-tiktok">
+            <div class="cta-icon-wrap">
+                <!-- TikTok icon SVG -->
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="white">
+                    <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V9.13a8.16 8.16 0 004.77 1.52V7.22a4.85 4.85 0 01-1-.53z"/>
+                </svg>
+            </div>
+            <div class="cta-body">
+                <div class="cta-label" style="color:#fe2c55">TikTok Shop</div>
+                <div class="cta-title">Minha Vitrine</div>
+                <div class="cta-sub">Conteúdo, produtos e mais no TikTok</div>
+            </div>
+            <div class="cta-chevron">›</div>
+        </a>
+    </div>
+
+
+    <!-- ══════════════════════════════════════════
+         SEÇÃO 5 — DEPOIMENTOS
+         ══════════════════════════════════════════ -->
+    <div class="sales-section">
+        <div class="sales-section-title">O que dizem</div>
+
+        <div class="depo-scroll">
+
+            <div class="depo-card">
+                <div class="depo-stars">★★★★★</div>
+                <div class="depo-text">"A leitura do mapa vibracional mudou completamente minha visão sobre minha jornada. Incrível!"</div>
+                <div class="depo-author">
+                    <div class="depo-avatar">A</div>
+                    <div class="depo-name">Ana R. · SP</div>
+                </div>
+            </div>
+
+            <div class="depo-card">
+                <div class="depo-stars">★★★★★</div>
+                <div class="depo-text">"O e-book de numerologia é profundo e transformador. Me reconheci em cada página."</div>
+                <div class="depo-author">
+                    <div class="depo-avatar">M</div>
+                    <div class="depo-name">Marcos L. · RJ</div>
+                </div>
+            </div>
+
+            <div class="depo-card">
+                <div class="depo-stars">★★★★★</div>
+                <div class="depo-text">"A mentoria foi reveladora. Hoje entendo meu propósito de vida com muito mais clareza."</div>
+                <div class="depo-author">
+                    <div class="depo-avatar">C</div>
+                    <div class="depo-name">Carla F. · BH</div>
+                </div>
+            </div>
+
+            <div class="depo-card">
+                <div class="depo-stars">★★★★★</div>
+                <div class="depo-text">"Super recomendo o kit completo! Cada e-book traz uma camada diferente de autoconhecimento."</div>
+                <div class="depo-author">
+                    <div class="depo-avatar">P</div>
+                    <div class="depo-name">Paula M. · RS</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- ══════════════════════════════════════════
+         SEÇÃO 6 — ATENDIMENTO / CONTATO
+         ══════════════════════════════════════════ -->
+    <div class="sales-section">
+        <div class="atend-card">
+            <div class="atend-icon">🌟</div>
+            <div class="atend-title">Fale Comigo</div>
+            <div class="atend-sub">
+                Dúvidas sobre produtos, consultas personalizadas ou parceria?<br>
+                Atendo via WhatsApp com todo cuidado e atenção que você merece.
+            </div>
+            <!-- EDITE o número do WhatsApp -->
+            <a href="https://wa.me/5521964440418?text=Olá!%20Vim%20pelo%20TRON%20e%20gostaria%20de%20saber%20mais."
+               target="_blank" class="atend-btn">
+                <svg width="18" height="18" fill="white" viewBox="0 0 16 16">
+                    <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.06 3.973L0 16l4.104-1.077A7.888 7.888 0 0 0 7.994 14.5c4.367 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 13.066c-1.224 0-2.427-.33-3.475-.955l-.25-.148-2.583.678.69-2.526-.162-.258a6.591 6.591 0 0 1-1.012-3.454c0-3.63 2.961-6.592 6.596-6.592 1.756 0 3.406.684 4.646 1.926 1.242 1.242 1.925 2.89 1.923 4.646-.002 3.631-2.96 6.592-6.59 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.17-.479 1.338-.942.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
+                </svg>
+                Chamar no WhatsApp
+            </a>
+        </div>
+    </div>
+
+
+    <!-- ══════════════════════════════════════════
+         FOOTER FINAL
+         ══════════════════════════════════════════ -->
+    <div class="page-footer">
+        <div class="page-footer-logo">Emc³</div>
+        <div class="page-footer-sub">Numerologia · Mapa Vibracional · Conteúdo Digital</div>
+        <div class="footer-links">
+            <a href="https://wa.me/5521964440418" target="_blank" class="footer-link">WhatsApp</a>
+            <a href="https://www.tiktok.com/@emc3oficial" target="_blank" class="footer-link">TikTok</a>
+            <a href="LINK_DO_EBOOK_1" target="_blank" class="footer-link">E-Books</a>
+        </div>
+    </div>
+
+</div><!-- /wrapper -->
+
+<!-- ── MINI PLAYER DE MÚSICA ──────────────────────────────── -->
+<!-- Coloque o arquivo em /static/musica.mp3 no servidor    -->
+<audio id="bgAudio" src="/static/musica.mp3" preload="none" loop></audio>
+
+<div class="mini-player hidden" id="miniPlayer">
+    <span class="mp-note" id="mpNote">🎵</span>
+    <button class="mp-play-btn" id="mpPlayBtn" onclick="mpToggle()" title="Play / Pause">
+        <svg id="mpIconPlay" viewBox="0 0 10 12" style="fill:#000;margin-left:1px"><polygon points="0,0 10,6 0,12"/></svg>
+        <svg id="mpIconPause" viewBox="0 0 10 12" style="fill:#000;display:none"><rect x="0" y="0" width="3.5" height="12"/><rect x="6.5" y="0" width="3.5" height="12"/></svg>
+    </button>
+    <div class="mp-info">
+        <div class="mp-title" id="mpTitle">Trilha Emc³</div>
+        <div class="mp-bar-wrap" onclick="mpSeek(event)" title="Clique para avançar">
+            <div class="mp-bar-fill" id="mpBarFill"></div>
+        </div>
+    </div>
+    <button class="mp-close" onclick="mpClose()" title="Fechar player">×</button>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── ESTADO ────────────────────────────────────────────────────────────────────
+let resolucao         = "1080x1080";
+let modoLegenda       = "nenhuma";
+let ultimaTranscricao = "";
+let ultimosSegmentos  = [];
+let ultimasPalavras   = [];
+
+// ── STATUS AO CARREGAR ────────────────────────────────────────────────────────
+window.addEventListener("DOMContentLoaded", async () => {
+    try {
+        const r = await fetch("/status");
+        const d = await r.json();
+        if (!d.groq) {
+            const ws = document.getElementById("whisperStatus");
+            if (ws) { ws.textContent = "⚠️ GROQ_API_KEY não configurada."; ws.style.color = "var(--red)"; }
+            document.getElementById("btnWhisper").disabled = true;
+        }
+    } catch (_) {}
+});
+
+// ── MODO LEGENDA ──────────────────────────────────────────────────────────────
+function pickModo(btn) {
+    document.querySelectorAll("[data-modo]").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    modoLegenda = btn.dataset.modo;
+    document.getElementById("painelAuto").style.display     = modoLegenda === "auto"     ? "block" : "none";
+    document.getElementById("painelEstatica").style.display = modoLegenda === "estatica" ? "block" : "none";
+}
+
+// ── DROP ZONES ────────────────────────────────────────────────────────────────
+function setupDrop(zoneId, inputId, labelId) {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    const label = document.getElementById(labelId);
+    input.addEventListener("change", () => { label.textContent = input.files[0]?.name || ""; });
+    zone.addEventListener("dragover",  e => { e.preventDefault(); zone.classList.add("over"); });
+    zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+    zone.addEventListener("drop",      () => zone.classList.remove("over"));
+}
+setupDrop("zoneImg", "inputImg", "nameImg");
+setupDrop("zoneAud", "inputAud", "nameAud");
+
+// ── RESOLUÇÃO ─────────────────────────────────────────────────────────────────
+function pickRes(btn) {
+    document.querySelectorAll(".res-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    resolucao = btn.dataset.res;
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function toast(msg, type = "info") {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.className = "show " + type;
+    setTimeout(() => el.className = "", 3400);
+}
+
+// ── PROGRESS ──────────────────────────────────────────────────────────────────
+function setProgress(pct, lbl) {
+    document.getElementById("progressWrap").classList.add("on");
+    document.getElementById("progressFill").style.width = pct + "%";
+    document.getElementById("progressLbl").textContent  = lbl;
+}
+function resetProgress() {
+    document.getElementById("progressWrap").classList.remove("on");
+    document.getElementById("progressFill").style.width = "0%";
+}
+
+// ── LED ───────────────────────────────────────────────────────────────────────
+function setLed(active, txt) {
+    document.getElementById("statusLed").className = "led" + (active ? " active" : "");
+    document.getElementById("ledText").textContent  = txt;
+}
+
+// ── TRANSCRIÇÃO ───────────────────────────────────────────────────────────────
+async function transcrever() {
+    const aud = document.getElementById("inputAud").files[0];
+    if (!aud) { toast("Selecione o áudio primeiro.", "error"); return; }
+
+    const btn    = document.getElementById("btnWhisper");
+    const status = document.getElementById("whisperStatus");
+    btn.disabled = true;
+    btn.textContent = "⏳ Transcrevendo...";
+    status.textContent = "Enviando para Groq Whisper...";
+    status.style.color = "";
+    setLed(true, "Transcrevendo...");
+
+    try {
+        const fd = new FormData();
+        fd.append("audio", aud);
+        const res  = await fetch("/transcrever", { method: "POST", body: fd });
+        const data = await res.json();
+
+        if (data.erro) {
+            status.textContent = "❌ " + data.erro;
+            status.style.color = "var(--red)";
+            toast("Erro na transcrição.", "error");
+            return;
+        }
+
+        ultimaTranscricao = data.texto     || "";
+        ultimosSegmentos  = data.segmentos || [];
+        ultimasPalavras   = data.palavras  || [];
+
+        if (ultimasPalavras.length) {
+            status.textContent = `✅ ${ultimasPalavras.length} palavras sincronizadas — TikTok pronto!`;
+            status.style.color = "var(--green)";
+            const badge = document.getElementById("badgePalavras");
+            badge.textContent = ultimasPalavras.length + " palavras";
+            badge.style.display = "inline-block";
+        } else if (ultimosSegmentos.length) {
+            status.textContent = `✅ ${ultimosSegmentos.length} segmentos sincronizados.`;
+            status.style.color = "var(--green)";
+        } else {
+            status.textContent = "✅ Transcrição concluída.";
+        }
+
+        document.getElementById("transcription-text").textContent = ultimaTranscricao;
+        const panel = document.getElementById("transcriptionPanel");
+        panel.classList.add("visible");
+        panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        toast("Legenda sincronizada! Clique em Gerar Vídeo.", "success");
+
+    } catch (e) {
+        status.textContent = "❌ Erro de conexão.";
+        status.style.color = "var(--red)";
+        toast("Erro de conexão.", "error");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "🎙️ Transcrever e sincronizar legenda automaticamente";
+        setLed(false, "Sistema Online");
+    }
+}
+
+// ── COPIAR / COMPARTILHAR ─────────────────────────────────────────────────────
+async function copiarTexto() {
+    if (!ultimaTranscricao) return;
+    try {
+        await navigator.clipboard.writeText(ultimaTranscricao);
+        const btn = document.getElementById("btnCopy");
+        btn.classList.add("copied"); btn.textContent = "✅ Copiado!";
+        setTimeout(() => { btn.classList.remove("copied"); btn.innerHTML = "📋 Copiar"; }, 2000);
+        toast("Texto copiado!", "success");
+    } catch { toast("Não foi possível copiar.", "error"); }
+}
+
+async function compartilharTexto() {
+    if (!ultimaTranscricao) return;
+    if (navigator.share) {
+        try { await navigator.share({ title: "Transcrição — Tron Conversor", text: ultimaTranscricao }); } catch {}
+    } else { await copiarTexto(); }
+}
+
+// ── USAR COMO LEGENDA ESTÁTICA ────────────────────────────────────────────────
+function usarComoLegenda() {
+    if (!ultimaTranscricao) return;
+    document.querySelectorAll("[data-modo]").forEach(b => b.classList.remove("active"));
+    document.querySelector("[data-modo='estatica']").classList.add("active");
+    modoLegenda = "estatica";
+    document.getElementById("painelAuto").style.display     = "none";
+    document.getElementById("painelEstatica").style.display = "block";
+    document.getElementById("legendaInput").value = ultimaTranscricao;
+    document.getElementById("legendaInput").scrollIntoView({ behavior: "smooth" });
+    toast("Texto colado! Modo manual ativado.", "success");
+}
+
+// ── CONVERTER ─────────────────────────────────────────────────────────────────
+async function converter() {
+    const img = document.getElementById("inputImg").files[0];
+    const aud = document.getElementById("inputAud").files[0];
+    if (!img || !aud) { toast("Selecione imagem e áudio.", "error"); return; }
+    if (modoLegenda === "auto" && !ultimosSegmentos.length && !ultimasPalavras.length) {
+        toast("Clique em 'Transcrever' primeiro.", "error"); return;
+    }
+
+    const btn = document.getElementById("btnConverter");
+    btn.disabled = true; btn.textContent = "PROCESSANDO...";
+    setLed(true, "Gerando vídeo...");
+    setProgress(8, "Enviando arquivos...");
+
+    const legenda = modoLegenda === "estatica"
+        ? (document.getElementById("legendaInput")?.value || "").trim() : "";
+
+    const fd = new FormData();
+    fd.append("imagem",       img);
+    fd.append("audio",        aud);
+    fd.append("resolucao",    resolucao);
+    fd.append("modo_legenda", modoLegenda);
+    fd.append("legenda",      legenda);
+    fd.append("palavras",     modoLegenda === "auto" ? JSON.stringify(ultimasPalavras)  : "");
+    fd.append("segmentos",    modoLegenda === "auto" ? JSON.stringify(ultimosSegmentos) : "");
+
+    let fake = 8;
+    const ticker = setInterval(() => {
+        if (fake < 82) { fake += Math.random() * 3.5; setProgress(Math.min(fake, 82), "FFmpeg processando..."); }
+    }, 1400);
+
+    try {
+        const res = await fetch("/converter", { method: "POST", body: fd });
+        clearInterval(ticker);
+
+        if (!res.ok) {
+            const err = await res.text();
+            resetProgress();
+            toast("Erro: " + err.slice(0, 90), "error");
+            return;
+        }
+
+        setProgress(100, "Pronto! Baixando...");
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement("a");
+        a.href = url; a.download = "tron_clipe.mp4"; a.click();
+        URL.revokeObjectURL(url);
+        toast("✅ Vídeo gerado com sucesso!", "success");
+        setTimeout(resetProgress, 2200);
+
+    } catch (e) {
+        clearInterval(ticker);
+        resetProgress();
+        toast("Erro de conexão.", "error");
+    } finally {
+        btn.disabled = false; btn.textContent = "GERAR VÍDEO";
+        setLed(false, "Sistema Online");
+    }
+}
+
+// ── MINI PLAYER ───────────────────────────────────────────────────────────────
+const audio      = document.getElementById("bgAudio");
+const player     = document.getElementById("miniPlayer");
+const barFill    = document.getElementById("mpBarFill");
+const mpNote     = document.getElementById("mpNote");
+const mpIconPlay = document.getElementById("mpIconPlay");
+const mpIconPause= document.getElementById("mpIconPause");
+let   mpClosed   = false;
+
+// Mostra o player 3s após carregar a página (se o arquivo existir)
+window.addEventListener("DOMContentLoaded", () => {
+    // Verifica se o arquivo existe antes de mostrar o player
+    fetch("/static/musica.mp3", { method: "HEAD" }).then(r => {
+        if (r.ok) {
+            setTimeout(() => {
+                if (!mpClosed) player.classList.remove("hidden");
+            }, 3000);
+        }
+    }).catch(() => {});
+});
+
+function mpToggle() {
+    if (audio.paused) {
+        audio.play().then(() => {
+            mpIconPlay.style.display  = "none";
+            mpIconPause.style.display = "";
+            mpNote.classList.add("playing");
+        }).catch(() => {});
+    } else {
+        audio.pause();
+        mpIconPlay.style.display  = "";
+        mpIconPause.style.display = "none";
+        mpNote.classList.remove("playing");
+    }
+}
+
+function mpClose() {
+    mpClosed = true;
+    audio.pause();
+    player.classList.add("hidden");
+}
+
+function mpSeek(e) {
+    if (!audio.duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct  = (e.clientX - rect.left) / rect.width;
+    audio.currentTime = pct * audio.duration;
+}
+
+// Atualiza a barra de progresso
+audio.addEventListener("timeupdate", () => {
+    if (!audio.duration) return;
+    const pct = (audio.currentTime / audio.duration) * 100;
+    barFill.style.width = pct + "%";
+    barFill.style.transition = "width .5s linear";
+});
+
+// Sincroniza ícone se o audio parar/acabar
+audio.addEventListener("pause",  () => {
+    mpIconPlay.style.display  = ""; mpIconPause.style.display = "none";
+    mpNote.classList.remove("playing");
+});
+audio.addEventListener("play", () => {
+    mpIconPlay.style.display  = "none"; mpIconPause.style.display = "";
+    mpNote.classList.add("playing");
+});
+</script>
+</body>
+</html>
