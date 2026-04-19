@@ -340,27 +340,20 @@ def converter():
 
             cmd = [
                 "ffmpeg", "-y",
-                # Foto parada: 1 fps economiza RAM e processa mais rápido
                 "-loop", "1",
-                "-framerate", "1",
                 "-i", img_path,
                 "-i", aud_path,
                 "-vf", vf,
                 "-map", "0:v",
                 "-map", "1:a",
                 "-c:v", "libx264",
-                # ultrafast = menor uso de RAM e CPU
                 "-preset", "ultrafast",
-                # stillimage = otimizado para foto parada
                 "-tune", "stillimage",
-                # CRF 35 = arquivo menor, qualidade suficiente para foto parada
                 "-crf", "35",
-                # 1 fps — foto parada não precisa de mais
-                "-r", "1",
+                "-r", "2",
+                "-g", "2",
                 "-pix_fmt", "yuv420p",
-                # Todos os cores trabalhando juntos
                 "-threads", CPU_CORES,
-                # rc-lookahead=0 e ref=1 = economiza RAM significativamente
                 "-x264-params", "rc-lookahead=0:ref=1:bframes=0:weightp=0",
                 "-c:a", "aac",
                 "-b:a", "96k",
@@ -419,4 +412,4 @@ def healthz():
 @app.errorhandler(Exception)
 def handle_exception(e):
     return f"<pre>{traceback.format_exc()}</pre>", 500
-              
+    
